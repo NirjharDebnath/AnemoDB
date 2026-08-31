@@ -8,11 +8,13 @@
 
 template <typename T>
 class ThreadSafeQueue {
+
 private:
     std::queue<T> queue; // shared queue between the threads
     std::mutex mtx; // shared mutex lock
     std::condition_variable cv; // synchronization primitive that allows multiple threads to communicate by letting one or more threads sleep (block) until another thread modifies a shared variable and notifies them to resume
     bool is_stopped = false; // shared state for condition_variable
+
 public:
     // used by the Listener to enqueue tasks
     void push(T task){
@@ -43,6 +45,11 @@ public:
         queue.pop();
 
         return task;
+    }
+
+    size_t size() {
+        std::lock_guard<std::mutex> lock(mtx);
+        return queue.size();
     }
 
     // used to cleanly shut down the server

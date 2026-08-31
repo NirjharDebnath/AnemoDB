@@ -18,7 +18,7 @@ struct CacheNode{
     // per node synchronization
     std::mutex node_mtx;
     std::condition_variable node_cv;
-
+    
     CacheNode(const std::string& k) : key(k) {}
 };
 
@@ -28,6 +28,8 @@ private:
     mutable std::mutex cache_mutex;
 
     size_t total_cachelines;
+
+    std::atomic<size_t> payload_bytes{0}; // Tracks dynamic string memory
 
     std::list<std::shared_ptr<CacheNode>> cacheLines; // LRU cache list
 
@@ -43,6 +45,9 @@ private:
 
         for (auto it = cacheLines.rbegin(); it != cacheLines.rend(); ++it) {
             if ((*it)->state == NodeState::READY) {
+                // Deduct the memory of the evicted node's strings
+                payload_bytes -= ((*it)->key.size() + (*it)->value.size());
+                
                 cacheDirectory.erase((*it)->key);
                 cacheLines.erase(std::next(it).base());
                 return true;
@@ -52,6 +57,18 @@ private:
     }
 public:
     explicit Cache(size_t total_cachelines) : total_cachelines(total_cachelines == 0 ? 1 : total_cachelines){}
+
+    struct CacheMetrics {
+        size_t current_lines;
+        size_t max_capacity;
+        size_t directory_size;
+        size_t total_payload_bytes;
+    };
+
+    CacheMetrics getMetrics() {
+        std::lock_guard<std::mutex> lock(cache_mutex);
+        return { cacheLines.size(), total_cachelines, cacheDirectory.size(), payload_bytes.load() };
+    }
 
     // {Node Pointer, is_leader boolean}, thread comes and tries to find it requested data. If fails then it reserves a slot in cacheDirectory and cacheLines both and then releases the global cache_mtx
     std::pair<std::shared_ptr<CacheNode>, bool> lookupOrReserve(const std::string& key) {
