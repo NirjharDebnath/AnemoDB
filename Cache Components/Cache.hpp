@@ -13,7 +13,7 @@ enum class NodeState { IN_PROGRESS, READY, FAILED };
 struct CacheNode{
     std::string key; //query
     std::string value; //result of query
-    NodeState state = NodeState::IN_PROGRESS; // to prevent eviction in progressing conditions
+    std::atomic<NodeState> state{NodeState::IN_PROGRESS}; // to prevent eviction in progressing conditions and make it atomic for preventing race conditions of evictReadyNode for logging
 
     // per node synchronization
     std::mutex node_mtx;
@@ -94,6 +94,8 @@ public:
         {
             std::lock_guard<std::mutex> node_lock(node->node_mtx); // lock only the node_mtx and not the cache_mtx cause only the reserved cacheLine is modified and following threads are the only ones to be blocked
             node->value = value; // write the value from the db to the reserved cacheline;
+            
+            payload_bytes += (node->key.size() + node->value.size()); // preventing race conditions for logging
             node->state = NodeState::READY;
         }
 

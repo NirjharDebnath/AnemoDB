@@ -1,6 +1,8 @@
 #pragma once
 #include <iostream>
 #include <string>
+#include <sstream>
+#include <iomanip>
 #include <queue>
 #include <optional>
 #include <atomic>
@@ -131,6 +133,10 @@ private:
                 // Return the generated report over TCP
                 final_response = generateStatsReport();
             }
+            else if (task->query == "STATS_JSON") {
+                // Raw JSON for web dashboards / external monitoring
+                final_response = generateStatsJson();
+            }
             else {
                 total_requests++; // Atomic increment
                 auto [cacheline, is_leader] = cache.lookupOrReserve(task->query);
@@ -208,7 +214,7 @@ private:
             return;
         }
 
-        std::cout << ">>> Cache Server listening on port " << port << " <<<\n";
+        std::cout << ">>> Cache Server listening on 127.0.0.1/" << port << " <<<\n";
 
         while (is_running)
         {
@@ -251,12 +257,18 @@ public:
 
     //generate telemetrics for the running cache server
     std::string generateStatsReport() {
+
         auto metrics = cache.getMetrics();
         size_t queue_len = taskQueue.size();
-        
+
         auto now = std::chrono::steady_clock::now();
-        auto uptime_sec = std::chrono::duration_cast<std::chrono::seconds>(now - server_start_time).count();
-        if (uptime_sec == 0) uptime_sec = 1; // Prevent division by zero
+        auto uptime_sec =
+            std::chrono::duration_cast<std::chrono::seconds>(
+                now - server_start_time
+            ).count();
+
+        if (uptime_sec == 0)
+            uptime_sec = 1;
 
         size_t reqs = total_requests.load();
         size_t hits = cache_hits.load();
@@ -264,37 +276,147 @@ public:
         uint64_t total_time = total_processing_time_us.load();
 
         double hit_rate = (reqs > 0) ? (static_cast<double>(hits) / reqs) * 100.0 : 0.0;
-        double avg_latency = (reqs > 0) ? (static_cast<double>(total_time) / reqs) / 1000.0 : 0.0; // ms
+
+        double avg_latency = (reqs > 0) ? (static_cast<double>(total_time) / reqs) / 1000.0 : 0.0;
+
+        double throughput = static_cast<double>(reqs) / uptime_sec;
+
+        size_t node_overhead = metrics.current_lines * sizeof(CacheNode);
+
+        size_t total_bytes = node_overhead + metrics.total_payload_bytes;
+
+        double total_kb = total_bytes / 1024.0;
+        double total_mb = total_kb / 1024.0;
+
+        const std::string BLUE   = "\033[1;34m";
+        const std::string CYAN   = "\033[1;36m";
+        const std::string GREEN  = "\033[1;32m";
+        const std::string YELLOW = "\033[1;33m";
+        const std::string RED    = "\033[1;31m";
+        const std::string WHITE  = "\033[1;37m";
+        const std::string GRAY   = "\033[0;37m";
+        const std::string RESET  = "\033[0m";
+
+        std::ostringstream report;
+
+        report << "\n"
+            << BLUE
+            << "╔══════════════════════════════════════════════════════╗\n"
+            << "║                ANEMO SERVER STATUS                   ║\n"
+            << "╚══════════════════════════════════════════════════════╝\n"
+            << RESET;
+
+        report << "\n"
+            << CYAN
+            << "┌─ SERVER ────────────────────────────────────────────┐\n"
+            << RESET
+            << "│  " << std::left << std::setw(20) << "Uptime"
+            << ": " << GREEN << uptime_sec << " seconds" << RESET << "\n"
+            << "│  " << std::left << std::setw(20) << "Throughput"
+            << ": " << GREEN << std::fixed << std::setprecision(2)
+            << throughput << " req/sec" << RESET << "\n"
+            << "│  " << std::left << std::setw(20) << "Average Latency"
+            << ": " << GREEN << std::fixed << std::setprecision(3)
+            << avg_latency << " ms" << RESET << "\n"
+            << "└─────────────────────────────────────────────────────┘\n";
+
+        report << "\n"
+            << CYAN
+            << "┌─ MEMORY & CACHE ────────────────────────────────────┐\n"
+            << RESET
+            << "│  " << std::left << std::setw(20) << "Queue Length"
+            << ": " << YELLOW << queue_len << " pending tasks" << RESET << "\n"
+            << "│  " << std::left << std::setw(20) << "Cache Lines"
+            << ": " << WHITE << metrics.current_lines << " / "
+            << metrics.max_capacity << RESET << "\n"
+            << "│  " << std::left << std::setw(20) << "Directory Entries"
+            << ": " << WHITE << metrics.directory_size << " keys" << RESET << "\n"
+            << "│  " << std::left << std::setw(20) << "Payload Memory"
+            << ": " << WHITE << metrics.total_payload_bytes << " bytes" << RESET << "\n"
+            << "│  " << std::left << std::setw(20) << "Node Overhead"
+            << ": " << WHITE << node_overhead << " bytes" << RESET << "\n"
+            << "│  " << std::left << std::setw(20) << "Estimated Memory"
+            << ": " << GREEN << total_bytes << " bytes" << RESET << "\n"
+            << "│  " << std::left << std::setw(20) << "Memory Usage"
+            << ": " << GREEN << std::fixed << std::setprecision(2)
+            << total_kb << " KB";
+
+        if (total_mb >= 1.0)
+            report << " (" << total_mb << " MB)";
+
+        report << "\n"
+            << "└─────────────────────────────────────────────────────┘\n";
+
+        report << "\n"
+            << CYAN
+            << "┌─ REQUEST METRICS ───────────────────────────────────┐\n"
+            << RESET
+            << "│  " << std::left << std::setw(20) << "Total Requests"
+            << ": " << WHITE << reqs << RESET << "\n"
+            << "│  " << std::left << std::setw(20) << "Cache Hits"
+            << ": " << GREEN << hits << RESET << "\n"
+            << "│  " << std::left << std::setw(20) << "Cache Misses"
+            << ": " << RED << misses << RESET << "\n"
+            << "│  " << std::left << std::setw(20) << "Hit Rate"
+            << ": " << GREEN << std::fixed << std::setprecision(2)
+            << hit_rate << " %" << RESET << "\n"
+            << "└─────────────────────────────────────────────────────┘\n";
+
+        report << "\n"
+            << GRAY
+            << "  Anemo Server telemetry • Live statistics\n"
+            << RESET
+            << "\n";
+
+        return report.str();
+    }
+
+    // for web server api / external monitoring
+    std::string generateStatsJson() {
+        auto metrics = cache.getMetrics();
+        size_t queue_len = taskQueue.size();
+        
+        auto now = std::chrono::steady_clock::now();
+        auto uptime_sec = std::chrono::duration_cast<std::chrono::seconds>(now - server_start_time).count();
+        if (uptime_sec == 0) uptime_sec = 1;
+
+        size_t reqs = total_requests.load();
+        size_t hits = cache_hits.load();
+        size_t misses = cache_misses.load();
+        uint64_t total_time = total_processing_time_us.load();
+
+        double hit_rate = (reqs > 0) ? (static_cast<double>(hits) / reqs) * 100.0 : 0.0;
+        double avg_latency = (reqs > 0) ? (static_cast<double>(total_time) / reqs) / 1000.0 : 0.0;
         double throughput = static_cast<double>(reqs) / uptime_sec;
 
         size_t node_overhead = metrics.current_lines * sizeof(CacheNode);
         size_t total_bytes = node_overhead + metrics.total_payload_bytes;
         double total_kb = total_bytes / 1024.0;
 
-        std::string report = "\n=== SERVER STATS ===\n";
-        report += "Uptime          : " + std::to_string(uptime_sec) + " seconds\n";
-        report += "Throughput      : " + std::to_string(throughput) + " req/sec\n";
-        report += "Avg Latency     : " + std::to_string(avg_latency) + " ms\n\n";
-        
-        report += "--- MEMORY ---\n";
-        report += "Queue Length    : " + std::to_string(queue_len) + " pending tasks\n";
-        report += "Cache Lines     : " + std::to_string(metrics.current_lines) + " / " + std::to_string(metrics.max_capacity) + " slots filled\n";
-        report += "Directory Size  : " + std::to_string(metrics.directory_size) + " keys mapped\n";
-        report += "Estimated Size  : " + std::to_string(total_bytes) + " Bytes (" + std::to_string(total_kb) + " KB)\n\n";
+        // Raw structured JSON without ANSI colors or formatting characters
+        std::string json = "{";
+        json += "\"connected\":true,";
+        json += "\"uptime_sec\":" + std::to_string(uptime_sec) + ",";
+        json += "\"throughput\":" + std::to_string(throughput) + ",";
+        json += "\"avg_latency_ms\":" + std::to_string(avg_latency) + ",";
+        json += "\"queue_length\":" + std::to_string(queue_len) + ",";
+        json += "\"cache_lines\":" + std::to_string(metrics.current_lines) + ",";
+        json += "\"max_capacity\":" + std::to_string(metrics.max_capacity) + ",";
+        json += "\"directory_size\":" + std::to_string(metrics.directory_size) + ",";
+        json += "\"bytes\":" + std::to_string(total_bytes) + ",";
+        json += "\"kb\":" + std::to_string(total_kb) + ",";
+        json += "\"requests\":" + std::to_string(reqs) + ",";
+        json += "\"hits\":" + std::to_string(hits) + ",";
+        json += "\"misses\":" + std::to_string(misses) + ",";
+        json += "\"hit_rate\":" + std::to_string(hit_rate);
+        json += "}";
 
-        report += "--- METRICS ---\n";
-        report += "Total Requests  : " + std::to_string(reqs) + "\n";
-        report += "Cache Hits      : " + std::to_string(hits) + "\n";
-        report += "Cache Misses    : " + std::to_string(misses) + "\n";
-        report += "Hit Rate        : " + std::to_string(hit_rate) + " %\n";
-        report += "====================\n";
-
-        return report;
+        return json;
     }
 
     ~CacheEngine()
     {
-        std::cout << "Initiating shutdown...\n";
+        // std::cout << "Initiating shutdown...\n";
         is_running = false;
 
         // Force accept() to unblock by shutting down the socket

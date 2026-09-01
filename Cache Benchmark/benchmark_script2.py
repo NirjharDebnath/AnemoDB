@@ -58,17 +58,17 @@ def send_to_db(query):
 if __name__ == "__main__":
     queries = []
     
-    # 1. Easy: 250 Point Lookups (ID pool 1-50 to ensure cache collisions)
+    # Easy: 250 Point Lookups (ID pool 1-50 to ensure cache collisions)
     for _ in range(250):
         s_id = random.randint(1, 50)
         queries.append(f"SELECT student_id, roll_number, name FROM students WHERE student_id = {s_id};")
         
-    # 2. Medium: 200 Heavy 3-Way JOINs (ID pool 1-50)
+    # Medium: 200 Heavy 3-Way JOINs (ID pool 1-50)
     for _ in range(200):
         s_id = random.randint(1, 50)
         queries.append(f"SELECT s.name, c.course_name, m.marks, m.grade FROM students s JOIN marks m ON s.student_id = m.student_id JOIN courses c ON m.course_id = c.course_id WHERE s.student_id = {s_id};")
         
-    # 3. Complex: 50 Massive Aggregations (5,000,000 rows scanned)
+    # Complex: 50 Massive Aggregations (5,000,000 rows scanned)
     for _ in range(50):
         queries.append("SELECT d.department_name, AVG(m.marks) AS avg_score FROM departments d JOIN students s ON d.department_id = s.department_id JOIN marks m ON s.student_id = m.student_id GROUP BY d.department_name;")
 
