@@ -172,7 +172,7 @@ private:
             // 2. Stop latency timer right before network transmission
             auto task_end_time = std::chrono::steady_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::microseconds>(task_end_time - task_start_time).count();
-            if (task->query != "STATS" && task-> != "STATS_JSON") {
+            if (task->query != "STATS" && task->query != "STATS_JSON") {
                 total_processing_time_us += duration; // Atomic add
             }
 
