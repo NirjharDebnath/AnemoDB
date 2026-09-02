@@ -1,79 +1,98 @@
-# AnemoDB
+# Anemo DB
 
-AnemoDB is a C++ in-memory concurrent cache server with an LRU policy and a built-in strategy to prevent duplicate backend work for the same key (thundering herd protection).
+**A High-Performance C++ Multi-Threaded LRU Cache Server for PostgreSQL**
 
-It accepts TCP requests, processes them through a worker pool, and returns:
-- `[CACHE MISS] ...` when one thread fetches a key for the first time
-- `[CACHE HIT] ...` when later requests reuse cached data
-- `[ERROR] ...` on failures
+<div style="text-align: right;">
+    ──── As Fast As The Winds....
+</div>
 
-## Current implementation highlights
 
-- In-memory LRU cache (`Cache.hpp`)
-- Per-key reservation states: `IN_PROGRESS`, `READY`, `FAILED`
-- Follower waiting via per-node condition variable while a leader fetches data
-- Thread-safe task queue for request dispatch (`ThreadSafeQueue.hpp`)
-- TCP listener + worker thread pool engine (`CacheEngine.hpp`)
-- Python concurrent client test script (`client_test.py`)
+![mondstadt image](./assets/mondstadt.jpg)
 
-## Project structure
+<div style="text-align: right;">
+    May the winds of Freedom guide you.
+</div>
 
-- `/home/runner/work/AnemoDB/AnemoDB/main.cpp`  
-  Starts `CacheEngine(10, 4, 8080)` and keeps the server alive.
-- `/home/runner/work/AnemoDB/AnemoDB/CacheEngine.hpp`  
-  Networking, worker loop, queue consumption, and simulated DB lookup.
-- `/home/runner/work/AnemoDB/AnemoDB/Cache.hpp`  
-  LRU cache directory/list and reservation lifecycle.
-- `/home/runner/work/AnemoDB/AnemoDB/ThreadSafeQueue.hpp`  
-  Blocking queue used between listener and workers.
-- `/home/runner/work/AnemoDB/AnemoDB/client_test.py`  
-  Fires concurrent requests and prints hit/miss metrics.
 
-## Request flow
+Developed as a systems engineering project. Anemo DB is a robust, lock-optimized, read-only cache layer designed to sit in front of PostgreSQL, capable of absorbing massive traffic spikes, preventing database melt-downs, and serving telemetry in real-time.
 
-1. Listener accepts a TCP client connection and reads one query string.
-2. Request is pushed into the shared queue.
-3. A worker pops the task and checks cache:
-   - miss: reserves key (`IN_PROGRESS`) and becomes leader
-   - hit while `IN_PROGRESS`: waits as follower
-   - hit while `READY`: returns cached value
-4. Leader performs backend fetch (currently simulated) and marks `READY` or `FAILED`.
-5. Waiting followers are notified and respond accordingly.
+## Key Features
 
-## Requirements
+* **Thread-Safe Bounded Task Queue:** Prevents Out-Of-Memory (OOM) crashes via fast-rejection load shedding.
 
-- Linux-like environment (uses POSIX sockets: `sys/socket.h`, `netinet/in.h`, `unistd.h`)
-- C++17-compatible compiler
-- Python 3 (for `client_test.py`)
 
-## Build and run
+* **Request Coalescing (Thundering Herd Protection):** Employs a leader-election model so concurrent cache misses for the same query only hit the database once.
 
-From `/home/runner/work/AnemoDB/AnemoDB`:
 
-```bash
-g++ -std=c++17 -pthread main.cpp -o anemodb_server
-./anemodb_server
-```
+* **$O(1)$ LRU Eviction:** Fast, deterministic memory management using a doubly-linked list and hash map combination.
 
-The server listens on port `8080` by default.
 
-## Load/concurrency test
+* **Lazy TTL Expiration:** Efficient, zero-background-thread cache invalidation to maintain data freshness.
 
-In a second terminal, from `/home/runner/work/AnemoDB/AnemoDB`:
+
+* **Persistent Connection Pooling:** Eliminates TCP handshake latency by maintaining a fixed pool of `libpqxx` connections.
+
+
+* **Real-Time Telemetry & Web Console:** Lock-free atomic metric gathering streamed over TCP to a Flask/Chart.js web dashboard.
+
+
+
+## Repository Structure
+
+The project is organized into distinct modules for database management, caching logic, benchmarking, and telemetry monitoring:
+
+* **`/Cache Components`**: Contains the core C++ engine (`Cache.hpp`, `CacheEngine.hpp`, `ConnectionPool.hpp`, `ThreadSafeQueue.hpp`, `main.cpp`).
+* **`/Cache Benchmark`**: Holds the PostgreSQL data generation and schema SQL scripts (`01_schema.sql` to `04_test_queries.sql`, `reset.sql`).
+* **`/Web Dashboard`**: Contains the Flask telemetry application (`web_dashboard.py`) and its static assets (`script.js`, `style.css`, `index.html`).
+* **Root Python Scripts**: Various load-testing tools including `benchmark_script.py`, `benchmark_script2.py`, `benchmark_script3.py`, and `monitor_cache.py`.
+
+## Installation & Setup
+
+### 1. Database Preparation
+
+Initialize the PostgreSQL testing environment using the provided SQL scripts. This generates 1,000,000 students and 5,000,000 enrollment/mark records for heavy load testing:
 
 ```bash
-python3 client_test.py
+psql -U postgres -d college_db -f "Cache Benchmark/01_schema.sql"
+psql -U postgres -d college_db -f "Cache Benchmark/02_generate_data.sql"
+psql -U postgres -d college_db -f "Cache Benchmark/03_indexes.sql"
+
 ```
 
-The script sends 50 concurrent requests over a smaller key space and prints latency, cache hit/miss counts, and hit rate.
+### 2. Compilation
 
-## Protocol notes
+Compile the C++ server with C++17, ensuring `libpqxx` and `pthread` are linked.
 
-- Send plain text query bytes over TCP (single request per connection).
-- Special query: `STATS` returns a basic server status message.
+```bash
+g++ -std=c++17 "Cache Components/main.cpp" -o anemo_db -lpqxx -lpq -pthread
 
-## Limitations (current code)
+```
 
-- Cache is in-memory only (no persistence)
-- Backend lookup is mocked (`queryDatabase` sleeps then returns formatted text)
-- No authentication, encryption, or distributed replication
+### 3. Running the Server
+
+Execute the binary. You will be prompted via an interactive CLI to configure the database credentials, cache capacity, worker threads (e.g., 8), server port (default 8080), and TTL duration (e.g., 60 seconds).
+
+```bash
+./anemo_db
+
+```
+
+### 4. Starting the Telemetry Dashboard
+
+In a separate terminal, launch the Flask monitoring dashboard to visualize throughput, memory usage, and queue length in real time.
+
+```bash
+python "Web Dashboard/web_dashboard.py"
+
+```
+
+### 5. Running Benchmarks
+
+Use the multi-threaded Python benchmark scripts to simulate traffic. `benchmark_script2.py` pushes 500 mixed queries (point lookups, heavy JOINs, massive aggregations) across 20 concurrent threads to calculate the cache speedup against direct PostgreSQL.
+
+```bash
+python benchmark_script2.py
+
+```
+
+---
