@@ -18,6 +18,9 @@ struct CacheNode{
     // per node synchronization
     std::mutex node_mtx;
     std::condition_variable node_cv;
+
+    // TTL timestamp
+    std::chrono::time_point<std::chrono::steady_clock> expiratio_time;
     
     CacheNode(const std::string& k) : key(k) {}
 };
@@ -28,6 +31,7 @@ private:
     mutable std::mutex cache_mutex;
 
     size_t total_cachelines;
+    size_t ttl_seconds; 
 
     std::atomic<size_t> payload_bytes{0}; // Tracks dynamic string memory
 
@@ -56,7 +60,7 @@ private:
         return false; // entire cache is in progress
     }
 public:
-    explicit Cache(size_t total_cachelines) : total_cachelines(total_cachelines == 0 ? 1 : total_cachelines){}
+    explicit Cache(size_t total_cachelines, size_t ttl=60) : total_cachelines(total_cachelines == 0 ? 1 : total_cachelines), ttl_seconds(ttl) {}
 
     struct CacheMetrics {
         size_t current_lines;
@@ -76,6 +80,15 @@ public:
 
         auto mapIt = cacheDirectory.find(key); //O(1)
         if (mapIt != cacheDirectory.end()) {
+            auto node = *(mapIt->second);
+
+            // Lazy Expiration
+            if (node->state == NodeState::READY && std::chrono::steady_clock::now() > node->expiratio_time) {
+                // Erase the expired node. The code will fall through and create a fresh one.
+                payload_bytes -= (node->key.size() + node->value.size());
+                cacheLines.erase(mapIt->second);
+                cacheDirectory.erase(mapIt);
+            }
             moveToFront(mapIt->second); // LRU update cachelines list after hit
             return { *(mapIt->second), false }; // cache hit, not the leader thread
         } 
@@ -95,6 +108,9 @@ public:
             std::lock_guard<std::mutex> node_lock(node->node_mtx); // lock only the node_mtx and not the cache_mtx cause only the reserved cacheLine is modified and following threads are the only ones to be blocked
             node->value = value; // write the value from the db to the reserved cacheline;
             
+            // Calculate and set the expiration time upon successful DB fetch
+            node->expiratio_time = std::chrono::steady_clock::now() + std::chrono::seconds(ttl_seconds);
+
             payload_bytes += (node->key.size() + node->value.size()); // preventing race conditions for logging
             node->state = NodeState::READY;
         }

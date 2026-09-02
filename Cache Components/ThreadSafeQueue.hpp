@@ -14,17 +14,22 @@ private:
     std::mutex mtx; // shared mutex lock
     std::condition_variable cv; // synchronization primitive that allows multiple threads to communicate by letting one or more threads sleep (block) until another thread modifies a shared variable and notifies them to resume
     bool is_stopped = false; // shared state for condition_variable
+    size_t max_capacity;
 
 public:
+
+    explicit ThreadSafeQueue(size_t capacity = 5000) : max_capacity(capacity) {}
     // used by the Listener to enqueue tasks
-    void push(T task){
+    bool push(T task){
         {
             std::lock_guard<std::mutex> lock(mtx); // lock the shared mutex lock, automatic locking (no mtx.lock reqd in modern C++)
-
+            
+            if (queue.size() >= max_capacity || is stopped) return false;
             queue.push(task);
         } // lock goes out of scope for the declared scope
 
         cv.notify_one(); // wake one worker thread to take the task and pop it out of the shared queue
+        return true;
     }
     // used by worker Threads to take one tasks for themselves
     std::optional<T> pop(){

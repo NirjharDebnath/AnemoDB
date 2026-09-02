@@ -142,6 +142,21 @@ int main() {
         }
     }
 
+    int ttlSeconds;
+    std::cout << "Cache TTL (seconds) [60] : ";
+    std::getline(std::cin, input);
+
+    if (input.empty()) {
+        ttlSeconds = 60;
+    } else {
+        try {
+            ttlSeconds = std::stoi(input);
+        } catch (...) {
+            std::cout << RED << "Invalid TTL.\n" << RESET;
+            return 1;
+        }
+    }
+
 
     // ─────────────────────────────────────────────
     // Build PostgreSQL connection string
@@ -171,6 +186,7 @@ int main() {
     std::cout << "Cache    : " << cacheCapacity << " entries\n";
     std::cout << "Threads  : " << workerThreads << "\n";
     std::cout << "Server   : " << serverPort << "\n";
+    std::cout << "TTL      : " << ttlSeconds << " seconds\n";
 
     std::cout << "\n";
 
@@ -185,7 +201,8 @@ int main() {
             cacheCapacity,
             workerThreads,
             serverPort,
-            conn_str
+            conn_str,
+            ttlSeconds // NEW
         );
 
         std::this_thread::sleep_for(

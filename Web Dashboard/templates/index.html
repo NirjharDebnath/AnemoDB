@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anemo DB • Server Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+<header class="header">
+    <div class="brand">
+        <div class="logo">A</div>
+        <div>
+            <h1>Anemo DB</h1>
+            <p>High-performance C++ multi-threaded read only cache</p>
+        </div>
+    </div>
+    <div class="header-actions">
+        <button id="themeToggle" class="theme-toggle">☀️ Light</button>
+        <div id="status" class="status">
+            <span class="status-dot"></span>
+            <span id="statusText">Connecting</span>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <div class="server-bar">
+        <div class="server-info">
+            <div>
+                <div class="server-label">Anemo Instance</div>
+                <div class="server-address">tcp://{{ host }}:{{ port }}</div>
+            </div>
+        </div>
+        <div class="updated">
+            Last update: <span id="lastUpdated">--</span>
+        </div>
+    </div>
+
+    <section class="metrics">
+        <div class="metric" style="--accent: var(--blue)"><div class="metric-label">Hit Rate</div><div class="metric-value" id="hitRate">0.0%</div><div class="metric-sub">Cache efficiency</div></div>
+        <div class="metric" style="--accent: var(--cyan)"><div class="metric-label">Throughput</div><div class="metric-value" id="throughput">0.00</div><div class="metric-sub">requests / second</div></div>
+        <div class="metric" style="--accent: var(--green)"><div class="metric-label">Avg Latency</div><div class="metric-value" id="avgLatency">0.00 ms</div><div class="metric-sub">request processing time</div></div>
+        <div class="metric" style="--accent: var(--purple)"><div class="metric-label">Uptime</div><div class="metric-value" id="uptime">0s</div><div class="metric-sub">server runtime</div></div>
+        <div class="metric" style="--accent: var(--yellow)"><div class="metric-label">Cache Entries</div><div class="metric-value" id="slotUsage">0 / 0</div><div class="metric-sub">occupied / capacity</div></div>
+        <div class="metric" style="--accent: var(--green)"><div class="metric-label">Memory</div><div class="metric-value" id="memUsage">0 KB</div><div class="metric-sub">estimated footprint</div></div>
+        <div class="metric" style="--accent: var(--blue)"><div class="metric-label">Total Requests</div><div class="metric-value" id="totalRequests">0</div><div class="metric-sub">requests processed</div></div>
+        <div class="metric" style="--accent: var(--red)"><div class="metric-label">Queue</div><div class="metric-value" id="queue">0</div><div class="metric-sub">pending tasks</div></div>
+    </section>
+
+    <section class="panel-grid">
+        <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">Cache Performance</div><div class="panel-description">Hit vs miss distribution</div></div></div>
+            <div class="chart-container"><canvas id="hitMissChart"></canvas></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">Request Throughput</div><div class="panel-description">Recent requests per second</div></div></div>
+            <div class="chart-container"><canvas id="throughputChart"></canvas></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">Cache Capacity</div><div class="panel-description">Current memory slot utilization</div></div></div>
+            <div class="utilization">
+                <div class="util-header"><span>Slots utilized</span><span id="utilText">0%</span></div>
+                <div class="progress"><div id="utilBar" class="progress-bar"></div></div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">Request Summary</div><div class="panel-description">Current Anemo workload</div></div></div>
+            <div class="utilization">
+                <div class="util-header"><span>Cache Hits</span><strong id="hits">0</strong></div>
+                <div class="util-header"><span>Cache Misses</span><strong id="misses">0</strong></div>
+                <div class="util-header"><span>Directory Entries</span><strong id="directory">0</strong></div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <span>Anemo • Telemetry Console</span>
+    <span>Auto-refresh: 2s</span>
+</footer>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

@@ -236,7 +236,14 @@ private:
             std::string query = readQuery(client_socket);
 
             if(!query.empty()) {
-                taskQueue.push({client_socket, query});
+                // Attempt to push the task to the queue
+                if (!taskQueue.push({client_socket, query})) {
+                    // Fast Rejection: The queue is full. 
+                    // Send an immediate error back to the client and close the socket.
+                    std::string err_msg = "[ERROR] SERVER_BUSY_QUEUE_FULL\n<EOQ>\n";
+                    writeAll(client_socket, err_msg);
+                    close(client_socket);
+                }
             }
             else {
                 close(client_socket);
@@ -245,8 +252,8 @@ private:
     }
 
 public:
-    CacheEngine(size_t total_cachelines, size_t n_threads, int port, const std::string& db_conn_str) : cache(total_cachelines), n_threads(n_threads), port(port), db_pool(n_threads, db_conn_str) { // Initialize pool
-        
+    CacheEngine(size_t total_cachelines, size_t n_threads, int port, const std::string& db_conn_str, size_t ttl_seconds) 
+        : cache(total_cachelines, ttl_seconds), n_threads(n_threads), port(port), db_pool(n_threads, db_conn_str) {    
         server_start_time = std::chrono::steady_clock::now(); 
         
         for(size_t i=0; i < n_threads; ++i){
