@@ -20,7 +20,7 @@ struct CacheNode{
     std::condition_variable node_cv;
 
     // TTL timestamp
-    std::chrono::time_point<std::chrono::steady_clock> expiratio_time;
+    std::chrono::time_point<std::chrono::steady_clock> expiration_time;
     
     CacheNode(const std::string& k) : key(k) {}
 };
@@ -47,13 +47,13 @@ private:
     bool evictReadyNode() {
         if (cacheLines.size() <total_cachelines) return true;
 
-        for (auto it = cacheLines.rbegin(); it != cacheLines.rend(); ++it) {
+        auto it = cacheLines.end();
+        while (it != cacheLines.begin()) {
+            --it; 
             if ((*it)->state == NodeState::READY) {
-                // Deduct the memory of the evicted node's strings
                 payload_bytes -= ((*it)->key.size() + (*it)->value.size());
-                
                 cacheDirectory.erase((*it)->key);
-                cacheLines.erase(std::next(it).base());
+                cacheLines.erase(it);
                 return true;
             }
         }
@@ -83,14 +83,17 @@ public:
             auto node = *(mapIt->second);
 
             // Lazy Expiration
-            if (node->state == NodeState::READY && std::chrono::steady_clock::now() > node->expiratio_time) {
+            if (node->state == NodeState::READY && std::chrono::steady_clock::now() > node->expiration_time) {
                 // Erase the expired node. The code will fall through and create a fresh one.
                 payload_bytes -= (node->key.size() + node->value.size());
                 cacheLines.erase(mapIt->second);
                 cacheDirectory.erase(mapIt);
             }
-            moveToFront(mapIt->second); // LRU update cachelines list after hit
-            return { *(mapIt->second), false }; // cache hit, not the leader thread
+
+            else {
+                moveToFront(mapIt->second); // LRU update cachelines list after hit
+                return { *(mapIt->second), false }; // cache hit, not the leader thread
+            }
         } 
 
         evictReadyNode();
@@ -109,7 +112,7 @@ public:
             node->value = value; // write the value from the db to the reserved cacheline;
             
             // Calculate and set the expiration time upon successful DB fetch
-            node->expiratio_time = std::chrono::steady_clock::now() + std::chrono::seconds(ttl_seconds);
+            node->expiration_time = std::chrono::steady_clock::now() + std::chrono::seconds(ttl_seconds);
 
             payload_bytes += (node->key.size() + node->value.size()); // preventing race conditions for logging
             node->state = NodeState::READY;

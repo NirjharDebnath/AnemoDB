@@ -79,7 +79,7 @@ async function updateMetrics() {
 
         status.className = "status online";
         statusText.innerText = "ONLINE";
-
+        
         document.getElementById("hitRate").innerText = data.hit_rate.toFixed(1) + "%";
         document.getElementById("throughput").innerText = data.throughput.toFixed(2);
         document.getElementById("avgLatency").innerText = data.avg_latency_ms.toFixed(2) + " ms";
@@ -91,6 +91,7 @@ async function updateMetrics() {
         document.getElementById("hits").innerText = data.hits.toLocaleString();
         document.getElementById("misses").innerText = data.misses.toLocaleString();
         document.getElementById("directory").innerText = data.directory_size;
+        document.getElementById("threadCount").innerText = `${data.active_threads} / ${data.total_threads}`;
 
         const utilization = data.max_capacity > 0 ? (data.cache_lines / data.max_capacity) * 100 : 0;
         document.getElementById("utilBar").style.width = Math.min(utilization, 100) + "%";
@@ -117,4 +118,4 @@ async function updateMetrics() {
 
 // Start loops
 updateMetrics();
-setInterval(updateMetrics, 2000);
+setInterval(updateMetrics, 2000); // set it to 1/60 = 16.66 for 60fps display on webserver

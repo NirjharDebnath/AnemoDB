@@ -11,9 +11,9 @@ class ConnectionPool {
 private:
     std::mutex pool_mtx;
     std::condition_variable pool_cv;
-    std::queue<std::unique_ptr<pqxx::connection>> connections;
+    std::queue<std::unique_ptr<pqxx::connection>> connections; // stores tcp connections of the database (no user input allowed) = n_threads. helps in fast aquiring tcp connection by leader threads for fast db query. also lets stats ignore the tcp connection time completely.
     std::string connection_string;
-    size_t pool_size;
+    size_t pool_size; // max ocnnections
 
 public:
     ConnectionPool(size_t size, const std::string& conn_str) 

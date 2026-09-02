@@ -10,6 +10,7 @@
 #include <thread>
 #include <condition_variable>
 #include <chrono> //optional for now
+#include <csignal>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -40,6 +41,7 @@ private:
 
     // telemetrics atomics
     std::atomic<size_t> total_requests{0};
+    std::atomic<size_t> active_workers{0}; // Track busy threads
     std::atomic<size_t> cache_hits{0};
     std::atomic<size_t> cache_misses{0};
     std::atomic<uint64_t> total_processing_time_us{0}; // stored in microseconds
@@ -125,6 +127,8 @@ private:
             auto task = taskQueue.pop();
             if (!task) break; 
 
+            active_workers++;
+
             // 1. Start latency timer immediately after taking the task
             auto task_start_time = std::chrono::steady_clock::now();
             std::string final_response;
@@ -180,12 +184,15 @@ private:
             final_response += "\n<EOQ>\n";
             writeAll(task->client_fd, final_response);
             close(task->client_fd);
+
+            active_workers--; // thread finished and going back to wait or sleep condition
         }
     }
 
     // Network Listener Loop
     void listenerLoop()
     {
+        signal(SIGPIPE, SIG_IGN);
         server_fd = socket(AF_INET, SOCK_STREAM, 0);
         if (server_fd < 0)
         {
@@ -325,6 +332,8 @@ public:
             << "│  " << std::left << std::setw(20) << "Average Latency"
             << ": " << GREEN << std::fixed << std::setprecision(3)
             << avg_latency << " ms" << RESET << "\n"
+            << "│  " << std::left << std::setw(20) << "Worker Threads"
+            << ": " << WHITE << active_workers.load() << " active / " << n_threads << " total" << RESET << "\n"
             << "└─────────────────────────────────────────────────────┘\n";
 
         report << "\n"
@@ -415,7 +424,9 @@ public:
         json += "\"requests\":" + std::to_string(reqs) + ",";
         json += "\"hits\":" + std::to_string(hits) + ",";
         json += "\"misses\":" + std::to_string(misses) + ",";
-        json += "\"hit_rate\":" + std::to_string(hit_rate);
+        json += "\"hit_rate\":" + std::to_string(hit_rate) + ",";
+        json += "\"active_threads\":" + std::to_string(active_workers.load()) + ",";
+        json += "\"total_threads\":" + std::to_string(n_threads);
         json += "}";
 
         return json;

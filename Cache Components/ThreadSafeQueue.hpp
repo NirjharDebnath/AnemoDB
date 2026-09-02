@@ -24,7 +24,7 @@ public:
         {
             std::lock_guard<std::mutex> lock(mtx); // lock the shared mutex lock, automatic locking (no mtx.lock reqd in modern C++)
             
-            if (queue.size() >= max_capacity || is stopped) return false;
+            if (queue.size() >= max_capacity || is_stopped) return false;
             queue.push(task);
         } // lock goes out of scope for the declared scope
 

@@ -202,7 +202,7 @@ int main() {
             workerThreads,
             serverPort,
             conn_str,
-            ttlSeconds // NEW
+            ttlSeconds
         );
 
         std::this_thread::sleep_for(
