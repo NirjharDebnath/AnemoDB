@@ -10,7 +10,7 @@
 ![mondstadt image](/assets/mondstadt.jpg)
 
 <div style="text-align: center;">
-    May the winds of Freedom guide you.
+    May the winds of Freedom guide you.<br><br>
 </div>
 
 
