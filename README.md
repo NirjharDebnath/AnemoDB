@@ -9,12 +9,12 @@
 
 ![mondstadt image](/assets/mondstadt.jpg)
 
-<div style="text-align: right;">
+<div style="text-align: center;">
     May the winds of Freedom guide you.
 </div>
 
 
-Developed as a systems engineering project. Anemo DB is a robust, lock-optimized, read-only cache layer designed to sit in front of PostgreSQL, capable of absorbing massive traffic spikes, preventing database melt-downs, and serving telemetry in real-time.
+*Developed as a systems engineering project. Anemo DB is a robust, lock-optimized, read-only cache layer designed to sit in front of PostgreSQL, capable of absorbing massive traffic spikes, preventing database melt-downs, and serving telemetry in real-time.*
 
 ## Key Features
 
