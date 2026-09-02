@@ -32,7 +32,7 @@ Anemo DB implements a "lookup or reserve" synchronization primitive.
 
 ### Mathematical Benefit
 
-If $N$ concurrent requests hit an expired key, the database load is reduced from $O(N)$ to $O(1)$.
+If $N$ concurrent requests hit an expired key, the database load is reduced from $$O(N)$$ to $O(1)$.
 
 ## 3. Memory Management: $O(1)$ LRU Eviction & Lazy TTL
 
