@@ -7,7 +7,7 @@
 </div>
 
 
-![mondstadt image](./assets/mondstadt.jpg)
+![mondstadt image](/assets/mondstadt.jpg)
 
 <div style="text-align: right;">
     May the winds of Freedom guide you.
