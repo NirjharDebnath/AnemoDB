@@ -1,6 +1,6 @@
 # Anemo DB
 
-**A High-Performance C++ Multi-Threaded LRU Cache Server for PostgreSQL**
+**A High-Performance C++ Multi-Threaded LRU Cache Server for DataBase**
 
 <div style="text-align: right;">
     ──── As Fast As The Winds....
