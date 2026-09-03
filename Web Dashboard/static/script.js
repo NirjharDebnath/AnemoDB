@@ -1,4 +1,3 @@
-// Retrieve CSS Variables dynamically so Chart.js reacts to theme changes
 function getCSSVar(name) { return getComputedStyle(document.body).getPropertyValue(name).trim(); }
 
 /* ───────── Chart Initializations ───────── */
@@ -30,6 +29,66 @@ const throughputChart = new Chart(document.getElementById("throughputChart").get
     }
 });
 
+// Dynamic Comparison Chart
+const latencyComparisonChart = new Chart(document.getElementById("latencyComparisonChart").getContext("2d"), {
+    type: "line",
+    data: {
+        labels: [],
+        datasets: [
+            { label: "Cache Latency (ms)", data: [], borderColor: "#39d98a", backgroundColor: "transparent", tension: 0.3, pointRadius: 2 },
+            { label: "PostgreSQL Latency (ms)", data: [], borderColor: "#ff5c70", backgroundColor: "transparent", tension: 0.3, pointRadius: 2 }
+        ]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        scales: {
+            x: { ticks: { color: getCSSVar("--chart-muted") }, grid: { color: getCSSVar("--grid-color") } },
+            y: { beginAtZero: true, ticks: { color: getCSSVar("--chart-muted") }, grid: { color: getCSSVar("--grid-color") } }
+        },
+        plugins: { legend: { labels: { color: getCSSVar("--chart-text") } } }
+    }
+});
+
+/* ───────── Simulation Controls ───────── */
+let isSimulating = false;
+const simToggleBtn = document.getElementById("simToggleBtn");
+const simTarget = document.getElementById("simTarget");
+const threadSlider = document.getElementById("threadSlider");
+const threadVal = document.getElementById("threadVal");
+
+threadSlider.addEventListener("input", (e) => {
+    threadVal.innerText = e.target.value;
+    if (isSimulating) sendSimControl(true);
+});
+
+simTarget.addEventListener("change", () => {
+    if (isSimulating) sendSimControl(true);
+});
+
+simToggleBtn.addEventListener("click", () => {
+    isSimulating = !isSimulating;
+    sendSimControl(isSimulating);
+});
+
+async function sendSimControl(running) {
+    try {
+        const res = await fetch("/api/traffic/control", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                running: running,
+                mode: simTarget.value,
+                threads: parseInt(threadSlider.value)
+            })
+        });
+        const data = await res.json();
+        isSimulating = data.running;
+        simToggleBtn.innerText = isSimulating ? "⏹ Stop Load" : "▶ Start Load";
+        simToggleBtn.style.background = isSimulating ? "var(--red)" : "var(--blue)";
+    } catch (e) {
+        console.error("Traffic control error:", e);
+    }
+}
 
 /* ───────── Theme Toggler Logic ───────── */
 const themeToggle = document.getElementById("themeToggle");
@@ -42,20 +101,19 @@ themeToggle.addEventListener("click", () => {
         themeToggle.innerText = "🌙 Dark";
     }
     
-    // Force Chart.js to redraw text/grid lines with new theme colors
-    hitMissChart.options.plugins.legend.labels.color = getCSSVar("--chart-text");
-    hitMissChart.update();
-
-    throughputChart.options.scales.x.ticks.color = getCSSVar("--chart-muted");
-    throughputChart.options.scales.x.grid.color = getCSSVar("--grid-color");
-    throughputChart.options.scales.y.ticks.color = getCSSVar("--chart-muted");
-    throughputChart.options.scales.y.grid.color = getCSSVar("--grid-color");
-    throughputChart.options.plugins.legend.labels.color = getCSSVar("--chart-text");
-    throughputChart.update();
+    [hitMissChart, throughputChart, latencyComparisonChart].forEach(c => {
+        if (c.options.plugins?.legend?.labels) c.options.plugins.legend.labels.color = getCSSVar("--chart-text");
+        if (c.options.scales?.x) {
+            c.options.scales.x.ticks.color = getCSSVar("--chart-muted");
+            c.options.scales.x.grid.color = getCSSVar("--grid-color");
+            c.options.scales.y.ticks.color = getCSSVar("--chart-muted");
+            c.options.scales.y.grid.color = getCSSVar("--grid-color");
+        }
+        c.update();
+    });
 });
 
-
-/* ───────── Helpers & Data Fetching ───────── */
+/* ───────── Telemetry Update Loop ───────── */
 function formatUptime(seconds) {
     if (seconds < 60) return seconds + "s";
     const minutes = Math.floor(seconds / 60);
@@ -67,11 +125,13 @@ function formatUptime(seconds) {
 async function updateMetrics() {
     try {
         const response = await fetch("/api/stats");
-        const data = await response.json();
+        const payload = await response.json();
+        const data = payload.cache;
+        const traffic = payload.traffic;
         const status = document.getElementById("status");
         const statusText = document.getElementById("statusText");
 
-        if (!data.connected) {
+        if (!data || !data.connected) {
             status.className = "status offline";
             statusText.innerText = "OFFLINE";
             return;
@@ -109,13 +169,32 @@ async function updateMetrics() {
         throughputChart.data.datasets[0].data.push(data.throughput);
         throughputChart.update();
 
-        document.getElementById("lastUpdated").innerText = new Date().toLocaleTimeString();
+        // Update Latency Comparison Chart
+        if (latencyComparisonChart.data.labels.length >= 20) {
+            latencyComparisonChart.data.labels.shift();
+            latencyComparisonChart.data.datasets[0].data.shift();
+            latencyComparisonChart.data.datasets[1].data.shift();
+        }
+        latencyComparisonChart.data.labels.push(now);
+        
+        // Hide/show dataset depending on simulation target mode
+        if (traffic.mode === "cache") {
+            latencyComparisonChart.data.datasets[0].data.push(traffic.avg_cache_lat_ms || data.avg_latency_ms);
+            latencyComparisonChart.data.datasets[1].data.push(null);
+        } else if (traffic.mode === "db") {
+            latencyComparisonChart.data.datasets[0].data.push(null);
+            latencyComparisonChart.data.datasets[1].data.push(traffic.avg_db_lat_ms);
+        } else {
+            latencyComparisonChart.data.datasets[0].data.push(traffic.avg_cache_lat_ms || data.avg_latency_ms);
+            latencyComparisonChart.data.datasets[1].data.push(traffic.avg_db_lat_ms);
+        }
+        latencyComparisonChart.update();
+
+        document.getElementById("lastUpdated").innerText = now;
     } catch (error) {
         document.getElementById("status").className = "status offline";
         document.getElementById("statusText").innerText = "CONNECTION ERROR";
     }
 }
-
-// Start loops
 updateMetrics();
-setInterval(updateMetrics, 2000); // set it to 1/60 = 16.66 for 60fps display on webserver
+setInterval(updateMetrics, 16.66);

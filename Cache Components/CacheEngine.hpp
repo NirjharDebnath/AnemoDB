@@ -44,6 +44,10 @@ private:
     std::atomic<size_t> active_workers{0}; // Track busy threads
     std::atomic<size_t> cache_hits{0};
     std::atomic<size_t> cache_misses{0};
+    std::mutex stats_mtx; // Throughput window variables
+    size_t last_req_count{0};
+    double last_calculated_throughput{0.0};
+    std::chrono::time_point<std::chrono::steady_clock> last_sample_time;
     std::atomic<uint64_t> total_processing_time_us{0}; // stored in microseconds
     std::chrono::time_point<std::chrono::steady_clock> server_start_time;
 
@@ -293,7 +297,26 @@ public:
 
         double avg_latency = (reqs > 0) ? (static_cast<double>(total_time) / reqs) / 1000.0 : 0.0;
 
-        double throughput = static_cast<double>(reqs) / uptime_sec;
+        double throughput = 0.0;
+        {
+            // Lock to safely update the sliding window
+            std::lock_guard<std::mutex> lock(stats_mtx);
+            
+            auto time_now = std::chrono::steady_clock::now();
+            auto delta_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time_now - last_sample_time).count();
+
+            if (delta_ms >= 200) { 
+                size_t current_reqs = total_requests.load();
+                size_t delta_reqs = current_reqs - last_req_count;
+                
+                last_calculated_throughput = (static_cast<double>(delta_reqs) / delta_ms) * 1000.0;
+                
+                last_req_count = current_reqs;
+                last_sample_time = time_now;
+            }
+            // Use the cached value if less than 200ms has passed
+            throughput = last_calculated_throughput; 
+        }
 
         size_t node_overhead = metrics.current_lines * sizeof(CacheNode);
 
@@ -403,7 +426,27 @@ public:
 
         double hit_rate = (reqs > 0) ? (static_cast<double>(hits) / reqs) * 100.0 : 0.0;
         double avg_latency = (reqs > 0) ? (static_cast<double>(total_time) / reqs) / 1000.0 : 0.0;
-        double throughput = static_cast<double>(reqs) / uptime_sec;
+
+        double throughput = 0.0;
+        {
+            // Lock to safely update the sliding window
+            std::lock_guard<std::mutex> lock(stats_mtx);
+            
+            auto time_now = std::chrono::steady_clock::now();
+            auto delta_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time_now - last_sample_time).count();
+
+            if (delta_ms >= 200) { 
+                size_t current_reqs = total_requests.load();
+                size_t delta_reqs = current_reqs - last_req_count;
+                
+                last_calculated_throughput = (static_cast<double>(delta_reqs) / delta_ms) * 1000.0;
+                
+                last_req_count = current_reqs;
+                last_sample_time = time_now;
+            }
+            // Use the cached value if less than 200ms has passed
+            throughput = last_calculated_throughput; 
+        }
 
         size_t node_overhead = metrics.current_lines * sizeof(CacheNode);
         size_t total_bytes = node_overhead + metrics.total_payload_bytes;

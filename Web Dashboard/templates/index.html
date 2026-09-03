@@ -14,7 +14,7 @@
         <div class="logo">A</div>
         <div>
             <h1>Anemo DB</h1>
-            <p>High-performance C++ multi-threaded read only cache</p>
+            <p>High-performance C++ multi-threaded read-only cache</p>
         </div>
     </div>
     <div class="header-actions">
@@ -36,9 +36,32 @@
         </div>
         <div class="updated">
             <span style="margin-right: 16px;">
-                Threads: <strong id="threadCount" style="color: var(--cyan);">0 / 0</strong>
+                Anemo Threads: <strong id="threadCount" style="color: var(--cyan);">0 / 0</strong>
             </span>
             Last update: <span id="lastUpdated">--</span>
+        </div>
+    </div>
+
+    <!-- Interactive Traffic Controller -->
+    <div class="panel" style="margin-bottom: 20px;">
+        <div class="panel-header">
+            <div>
+                <div class="panel-title">Dynamic Benchmark & Load Generator</div>
+                <div class="panel-description">Adjust live concurrent client loads directly against Cache, PostgreSQL, or Both</div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <select id="simTarget" class="theme-toggle" style="border-radius: 8px;">
+                    <option value="both">Target: Both (Direct Comparison)</option>
+                    <option value="cache">Target: Cache Only</option>
+                    <option value="db">Target: PostgreSQL Only</option>
+                </select>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                    <span>Load (Number of Clients):</span>
+                    <input type="range" id="threadSlider" min="1" max="24" value="4" style="cursor: pointer;">
+                    <strong id="threadVal" style="color: var(--blue);">4</strong>
+                </div>
+                <button id="simToggleBtn" class="theme-toggle" style="background: var(--blue); color: #fff; font-weight: bold;">▶ Start Load</button>
+            </div>
         </div>
     </div>
 
@@ -54,24 +77,34 @@
     </section>
 
     <section class="panel-grid">
-        <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">Cache Performance</div><div class="panel-description">Hit vs miss distribution</div></div></div>
-            <div class="chart-container"><canvas id="hitMissChart"></canvas></div>
+        <!-- New Latency Comparison Chart -->
+        <div class="panel" id="comparisonPanel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Direct Latency Comparison (Live)</div>
+                    <div class="panel-description">Cache response speed vs. PostgreSQL direct response (ms)</div>
+                </div>
+            </div>
+            <div class="chart-container"><canvas id="latencyComparisonChart"></canvas></div>
         </div>
+
         <div class="panel">
             <div class="panel-header"><div><div class="panel-title">Request Throughput</div><div class="panel-description">Recent requests per second</div></div></div>
             <div class="chart-container"><canvas id="throughputChart"></canvas></div>
         </div>
+
         <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">Cache Capacity</div><div class="panel-description">Current memory slot utilization</div></div></div>
+            <div class="panel-header"><div><div class="panel-title">Cache Performance</div><div class="panel-description">Hit vs miss distribution</div></div></div>
+            <div class="chart-container"><canvas id="hitMissChart"></canvas></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">Resource Utilization</div><div class="panel-description">Current memory slot capacity</div></div></div>
             <div class="utilization">
                 <div class="util-header"><span>Slots utilized</span><span id="utilText">0%</span></div>
                 <div class="progress"><div id="utilBar" class="progress-bar"></div></div>
             </div>
-        </div>
-        <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">Request Summary</div><div class="panel-description">Current Anemo workload</div></div></div>
-            <div class="utilization">
+            <div class="utilization" style="margin-top: 15px; border-top: 1px solid var(--border);">
                 <div class="util-header"><span>Cache Hits</span><strong id="hits">0</strong></div>
                 <div class="util-header"><span>Cache Misses</span><strong id="misses">0</strong></div>
                 <div class="util-header"><span>Directory Entries</span><strong id="directory">0</strong></div>
