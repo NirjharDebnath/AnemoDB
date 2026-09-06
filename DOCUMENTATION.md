@@ -2,7 +2,7 @@
 
 ## 1. System Purpose
 
-Anemo DB is a learning-oriented cache server that sits between query clients and PostgreSQL. It targets repeated read-query workloads where cache reuse can reduce DB pressure and improve latency.
+Anemo DB is a learning-oriented read-only cache server that sits between query clients and a database. It targets repeated read-query workloads where cache reuse can reduce DB pressure and improve latency. The current implementation uses PostgreSQL connectors, but the same design can be adapted to other databases with minor connector-level changes.
 
 The server accepts SQL-like text requests over TCP, caches query-to-response mappings in memory, and returns cached or freshly-fetched results using a delimiter-framed protocol.
 
@@ -67,7 +67,7 @@ All clients communicate over TCP using `<EOQ>` as end-of-query / end-of-response
      - lookup existing cache line
      - perform lazy TTL expiration check
      - reserve placeholder if miss
-5. On miss, leader thread queries PostgreSQL and fills cache line.
+5. On miss, leader thread queries the database and fills cache line.
 6. Waiting follower threads are released and reuse leader result.
 7. Worker appends `<EOQ>` to output, writes response, closes socket.
 

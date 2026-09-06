@@ -1,6 +1,6 @@
 # Anemo DB
 
-**A multi-threaded C++ read-through cache server for PostgreSQL workloads**
+**A multi-threaded C++ read-only cache server for database workloads**
 
 <div style="text-align: right;">──── As Fast As The Winds....</div>
 
@@ -10,7 +10,7 @@
 
 <div style="text-align: center;">May the winds of Freedom guide you.<br><br></div>
 
-Anemo DB is a learning-focused systems project that places a TCP cache layer in front of PostgreSQL. It is designed to reduce repeated read-query load, absorb traffic bursts, and expose real-time telemetry for monitoring.
+Anemo DB is a learning-focused systems project that places a read-only TCP cache layer in front of a database. It is designed to reduce repeated read-query load, absorb traffic bursts, and expose real-time telemetry for monitoring. The current implementation uses PostgreSQL connectors, but the same architecture can be adapted to other databases with minor connector-level changes.
 
 ## What Anemo DB Implements
 
@@ -44,7 +44,7 @@ Anemo DB is a learning-focused systems project that places a TCP cache layer in 
 3. Worker thread processes request:
    - `STATS`/`STATS_JSON` => telemetry response
    - SQL query => cache lookup/reservation
-4. On miss, leader thread fetches from PostgreSQL using pooled connection.
+4. On miss, leader thread fetches from the database using pooled connection.
 5. Cache line is fulfilled and waiting followers are notified.
 6. Response is returned with trailing `<EOQ>` delimiter.
 
