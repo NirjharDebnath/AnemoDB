@@ -26,15 +26,15 @@ Anemo DB is a learning-focused systems project that places a read-only TCP cache
 
 ## Repository Structure
 
-- `/home/runner/work/AnemoDB/AnemoDB/Cache Components`
+- `/AnemoDB/Cache Components`
   - Core C++ engine: `main.cpp`, `CacheEngine.hpp`, `Cache.hpp`, `ConnectionPool.hpp`, `ThreadSafeQueue.hpp`
-- `/home/runner/work/AnemoDB/AnemoDB/Cache Benchmark`
+- `/AnemoDB/Cache Benchmark`
   - SQL schema/data scripts + Python benchmark clients
-- `/home/runner/work/AnemoDB/AnemoDB/Cache Monitor`
+- `/AnemoDB/Cache Monitor`
   - Terminal monitor that polls server stats
-- `/home/runner/work/AnemoDB/AnemoDB/Web Dashboard`
+- `/AnemoDB/Web Dashboard`
   - Flask backend, traffic generator, HTML/CSS/JS dashboard UI
-- `/home/runner/work/AnemoDB/AnemoDB/Bash Control`
+- `/AnemoDB/Bash Control`
   - Helper shell scripts to start/stop/check PostgreSQL and run server
 
 ## Architecture at a Glance
@@ -48,7 +48,7 @@ Anemo DB is a learning-focused systems project that places a read-only TCP cache
 5. Cache line is fulfilled and waiting followers are notified.
 6. Response is returned with trailing `<EOQ>` delimiter.
 
-For deeper internals, see `/home/runner/work/AnemoDB/AnemoDB/DOCUMENTATION.md`.
+For deeper internals, see `/AnemoDB/DOCUMENTATION.md`.
 
 ## Protocol
 

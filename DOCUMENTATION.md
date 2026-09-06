@@ -12,7 +12,7 @@ The server accepts SQL-like text requests over TCP, caches query-to-response map
 
 ## 2.1 Cache Server (C++)
 
-Location: `/home/runner/work/AnemoDB/AnemoDB/Cache Components`
+Location: `/AnemoDB/Cache Components`
 
 - `main.cpp`: interactive admin startup console and runtime command loop
 - `CacheEngine.hpp`: listener thread, worker pool, DB fetch path, telemetry generation
@@ -22,14 +22,14 @@ Location: `/home/runner/work/AnemoDB/AnemoDB/Cache Components`
 
 ## 2.2 Monitoring and UI
 
-- Terminal monitor: `/home/runner/work/AnemoDB/AnemoDB/Cache Monitor/monitor_cache.py`
-- Web dashboard backend: `/home/runner/work/AnemoDB/AnemoDB/Web Dashboard/web_dashboard.py`
-- Dashboard load generator: `/home/runner/work/AnemoDB/AnemoDB/Web Dashboard/traffic_generator.py`
-- Dashboard frontend: HTML/CSS/JS in `/home/runner/work/AnemoDB/AnemoDB/Web Dashboard`
+- Terminal monitor: `/AnemoDB/Cache Monitor/monitor_cache.py`
+- Web dashboard backend: `/AnemoDB/Web Dashboard/web_dashboard.py`
+- Dashboard load generator: `/AnemoDB/Web Dashboard/traffic_generator.py`
+- Dashboard frontend: HTML/CSS/JS in `/AnemoDB/Web Dashboard`
 
 ## 2.3 Benchmark and Data Tooling
 
-Location: `/home/runner/work/AnemoDB/AnemoDB/Cache Benchmark`
+Location: `/AnemoDB/Cache Benchmark`
 
 - SQL schema/data/index/query scripts in `create_db/`
 - Concurrent benchmark scripts for direct DB vs cache comparisons
