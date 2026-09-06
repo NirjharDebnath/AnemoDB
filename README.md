@@ -1,98 +1,157 @@
 # Anemo DB
 
-**A High-Performance C++ Multi-Threaded LRU Cache Server for DataBase**
+**A multi-threaded C++ read-through cache server for PostgreSQL workloads**
 
-<div style="text-align: right;">
-    ──── As Fast As The Winds....
-</div>
+<div style="text-align: right;">──── As Fast As The Winds....</div>
 
+![Anemo banner](/assets/mondstadt2.jpg)
 
-![mondstadt image](/assets/mondstadt2.jpg)
+![Anemo architecture (light)](/assets/Anemo-system-design-light.png)
 
-<div style="text-align: center;">
-    May the winds of Freedom guide you.<br><br>
-</div>
+<div style="text-align: center;">May the winds of Freedom guide you.<br><br></div>
 
+Anemo DB is a learning-focused systems project that places a TCP cache layer in front of PostgreSQL. It is designed to reduce repeated read-query load, absorb traffic bursts, and expose real-time telemetry for monitoring.
 
-*Developed as a systems engineering project. Anemo DB is a robust, lock-optimized, read-only cache layer designed to sit in front of PostgreSQL, capable of absorbing massive traffic spikes, preventing database melt-downs, and serving telemetry in real-time.*
+## What Anemo DB Implements
 
-## Key Features
-
-* **Thread-Safe Bounded Task Queue:** Prevents Out-Of-Memory (OOM) crashes via fast-rejection load shedding.
-
-
-* **Request Coalescing (Thundering Herd Protection):** Employs a leader-election model so concurrent cache misses for the same query only hit the database once.
-
-
-* **$O(1)$ LRU Eviction:** Fast, deterministic memory management using a doubly-linked list and hash map combination.
-
-
-* **Lazy TTL Expiration:** Efficient, zero-background-thread cache invalidation to maintain data freshness.
-
-
-* **Persistent Connection Pooling:** Eliminates TCP handshake latency by maintaining a fixed pool of `libpqxx` connections.
-
-
-* **Real-Time Telemetry & Web Console:** Lock-free atomic metric gathering streamed over TCP to a Flask/Chart.js web dashboard.
-
-
+- Multi-threaded TCP server for SQL-over-socket requests
+- Read-through cache with `O(1)` lookup + LRU ordering
+- TTL-based lazy expiration (no cleanup background thread)
+- Request coalescing (single DB fetch for concurrent misses on same key)
+- Bounded request queue with fast rejection when overloaded
+- Fixed-size PostgreSQL connection pool (`libpqxx`)
+- Telemetry endpoints via in-band commands (`STATS`, `STATS_JSON`)
+- Flask + Chart.js dashboard for live status and load simulation
+- Benchmark and dataset tooling for cache-vs-DB comparisons
 
 ## Repository Structure
 
-The project is organized into distinct modules for database management, caching logic, benchmarking, and telemetry monitoring:
+- `/home/runner/work/AnemoDB/AnemoDB/Cache Components`
+  - Core C++ engine: `main.cpp`, `CacheEngine.hpp`, `Cache.hpp`, `ConnectionPool.hpp`, `ThreadSafeQueue.hpp`
+- `/home/runner/work/AnemoDB/AnemoDB/Cache Benchmark`
+  - SQL schema/data scripts + Python benchmark clients
+- `/home/runner/work/AnemoDB/AnemoDB/Cache Monitor`
+  - Terminal monitor that polls server stats
+- `/home/runner/work/AnemoDB/AnemoDB/Web Dashboard`
+  - Flask backend, traffic generator, HTML/CSS/JS dashboard UI
+- `/home/runner/work/AnemoDB/AnemoDB/Bash Control`
+  - Helper shell scripts to start/stop/check PostgreSQL and run server
 
-* **`/Cache Components`**: Contains the core C++ engine (`Cache.hpp`, `CacheEngine.hpp`, `ConnectionPool.hpp`, `ThreadSafeQueue.hpp`, `main.cpp`).
-* **`/Cache Benchmark`**: Holds the PostgreSQL data generation and schema SQL scripts (`01_schema.sql` to `04_test_queries.sql`, `reset.sql`).
-* **`/Web Dashboard`**: Contains the Flask telemetry application (`web_dashboard.py`) and its static assets (`script.js`, `style.css`, `index.html`).
-* **Root Python Scripts**: Various load-testing tools including `benchmark_script.py`, `benchmark_script2.py`, `benchmark_script3.py`, and `monitor_cache.py`.
+## Architecture at a Glance
 
-## Installation & Setup
+1. Client sends a SQL query over TCP, terminated with `<EOQ>`.
+2. Listener thread accepts and enqueues requests.
+3. Worker thread processes request:
+   - `STATS`/`STATS_JSON` => telemetry response
+   - SQL query => cache lookup/reservation
+4. On miss, leader thread fetches from PostgreSQL using pooled connection.
+5. Cache line is fulfilled and waiting followers are notified.
+6. Response is returned with trailing `<EOQ>` delimiter.
 
-### 1. Database Preparation
+For deeper internals, see `/home/runner/work/AnemoDB/AnemoDB/DOCUMENTATION.md`.
 
-Initialize the PostgreSQL testing environment using the provided SQL scripts. This generates 1,000,000 students and 5,000,000 enrollment/mark records for heavy load testing:
+## Protocol
+
+- Request format:
+  - `<SQL_QUERY>\n<EOQ>\n`
+- Response format:
+  - `<PAYLOAD>\n<EOQ>\n`
+- Special commands:
+  - `STATS`
+  - `STATS_JSON`
+
+## Prerequisites
+
+- Linux environment (scripts use `systemctl` + `sudo`)
+- PostgreSQL running locally or reachable over network
+- C++17 compiler (`g++`)
+- `libpqxx` and `libpq`
+- Python 3
+- Python packages: `flask`, `psycopg2`
+
+## Setup and Run
+
+### 1) Prepare benchmark database (optional but recommended)
 
 ```bash
-psql -U postgres -d college_db -f "Cache Benchmark/01_schema.sql"
-psql -U postgres -d college_db -f "Cache Benchmark/02_generate_data.sql"
-psql -U postgres -d college_db -f "Cache Benchmark/03_indexes.sql"
-
+psql -U postgres -d college_db -f "Cache Benchmark/create_db/01_schema.sql"
+psql -U postgres -d college_db -f "Cache Benchmark/create_db/02_generate_data.sql"
+psql -U postgres -d college_db -f "Cache Benchmark/create_db/03_indexes.sql"
 ```
 
-### 2. Compilation
-
-Compile the C++ server with C++17, ensuring `libpqxx` and `pthread` are linked.
+### 2) Build server
 
 ```bash
 g++ -std=c++17 "Cache Components/main.cpp" -o anemo_db -lpqxx -lpq -pthread
-
 ```
 
-### 3. Running the Server
+Or run helper script:
 
-Execute the binary. You will be prompted via an interactive CLI to configure the database credentials, cache capacity, worker threads (e.g., 8), server port (default 8080), and TTL duration (e.g., 60 seconds).
+```bash
+bash "Bash Control/anemo_db.sh"
+```
+
+### 3) Start server
 
 ```bash
 ./anemo_db
-
 ```
 
-### 4. Starting the Telemetry Dashboard
+The admin console prompts for DB and server configuration, then accepts commands:
 
-In a separate terminal, launch the Flask monitoring dashboard to visualize throughput, memory usage, and queue length in real time.
+- `showstats`
+- `clear`
+- `help`
+- `stop`
+
+### 4) Run dashboard
 
 ```bash
-python "Web Dashboard/web_dashboard.py"
-
+cd "Web Dashboard"
+python web_dashboard.py
 ```
 
-### 5. Running Benchmarks
+Open `http://127.0.0.1:5000`.
 
-Use the multi-threaded Python benchmark scripts to simulate traffic. `benchmark_script2.py` pushes 500 mixed queries (point lookups, heavy JOINs, massive aggregations) across 20 concurrent threads to calculate the cache speedup against direct PostgreSQL.
+### 5) Run monitor and benchmarks
 
 ```bash
-python benchmark_script2.py
-
+python "Cache Monitor/monitor_cache.py"
+python "Cache Benchmark/client_test.py"
+python "Cache Benchmark/benchmark_script.py"
+python "Cache Benchmark/benchmark_script2.py"
+python "Cache Benchmark/benchmark_script3.py"
 ```
 
----
+## Dashboard Capabilities
+
+- Live server connectivity status
+- Hit rate, throughput, average latency, queue depth, memory, threads
+- Throughput and hit/miss charts
+- Live cache vs direct-DB latency comparison
+- Interactive traffic controls:
+  - target mode (`cache`, `db`, `both`)
+  - dynamic thread count
+  - start/stop load generation
+
+## Benchmark and Dataset Notes
+
+- SQL scripts create a college-style schema with:
+  - 6 departments
+  - 120 courses
+  - 300 faculty rows
+  - 1,000,000 students
+  - 5,000,000 enrollments
+  - 5,000,000 marks
+- Benchmarks include mixed query workloads (point lookups, joins, aggregations).
+
+## Current Limitations (from current code)
+
+- Cache server query path is read-focused and intended for benchmark-style read workloads.
+- Query result serialization currently returns the first row’s columns as a pipe-separated string.
+- Security hardening (auth/TLS/input policy) is not implemented.
+- Shell helper scripts are Linux/systemd specific.
+
+## License
+
+No explicit license file is currently present in this repository.
