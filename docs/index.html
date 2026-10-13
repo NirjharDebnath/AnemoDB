@@ -4,18 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AnemoDB • High-Performance C++ Read-Through Cache Server</title>
+    <meta name="theme-color" content="#07090e">
     <link rel="icon" href="assets/anemo_logo_512.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div class="hero-backdrop"></div>
     <div class="ambient-glow"></div>
 
-    <div class="container">
-        <!-- ───────── NAVIGATION ───────── -->
-        <nav>
+    <!-- ───────── NAVIGATION ───────── -->
+    <header class="site-header" id="siteHeader">
+        <nav class="container">
             <a href="#" class="logo-wrap">
                 <img src="assets/anemo_logo_512.png" alt="Anemo Logo" class="logo-avatar">
                 <div class="logo-title">
@@ -23,7 +26,7 @@
                     <span class="logo-badge">v1.0.0</span>
                 </div>
             </a>
-            <div class="nav-links">
+            <div class="nav-links" id="navLinks">
                 <a href="#diagram">System Design</a>
                 <a href="#pipeline">Architecture</a>
                 <a href="#benchmarks">Benchmarks</a>
@@ -32,21 +35,28 @@
                 <a href="#install">Installation</a>
             </div>
             <div class="nav-actions">
-                <a href="https://github.com/NirjharDebnath/AnemoDB" target="_blank" class="btn-star" title="Star AnemoDB on GitHub">
+                <a href="https://github.com/NirjharDebnath/AnemoDB" target="_blank" rel="noopener" class="btn-star" title="Star AnemoDB on GitHub" aria-label="Star AnemoDB on GitHub">
                     <svg class="star-icon" height="15" width="15" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25z"/>
                     </svg>
                     <span>Star on GitHub</span>
                 </a>
-                <a href="https://github.com/NirjharDebnath/AnemoDB" target="_blank" class="btn-gh">
+                <a href="https://github.com/NirjharDebnath/AnemoDB" target="_blank" rel="noopener" class="btn-gh">
                     <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
                     </svg>
                     GitHub
                 </a>
+                <button class="nav-toggle" id="navToggle" onclick="toggleNav()" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navLinks">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
         </nav>
+    </header>
 
+    <div class="container">
         <!-- ───────── HERO SECTION ───────── -->
         <section class="hero">
             <div class="hero-avatar-wrap">
@@ -80,14 +90,14 @@
                 </div>
                 <div class="install-code">
                     <span class="comment"># 1. Clone the repository</span><br>
-                    <span class="prompt">$</span>git clone https://github.com/NirjharDebnath/AnemoDB.git<br>
-                    <span class="prompt">$</span>cd AnemoDB<br><br>
+                    <span class="prompt">$</span><span class="tok-fn">git</span> clone <span class="tok-str">https://github.com/NirjharDebnath/AnemoDB.git</span><br>
+                    <span class="prompt">$</span><span class="tok-builtin">cd</span> AnemoDB<br><br>
                     <span class="comment"># 2. Build release binary with GCC -O3 optimization</span><br>
-                    <span class="prompt">$</span>make<br><br>
+                    <span class="prompt">$</span><span class="tok-fn">make</span><br><br>
                     <span class="comment"># 3. Install system-wide to /usr/local/bin (Optional)</span><br>
-                    <span class="prompt">$</span>sudo make install<br><br>
+                    <span class="prompt">$</span><span class="tok-kw">sudo</span> <span class="tok-fn">make</span> install<br><br>
                     <span class="comment"># 4. Launch AnemoDB Admin Console</span><br>
-                    <span class="prompt">$</span>anemo_db
+                    <span class="prompt">$</span><span class="tok-fn">anemo_db</span>
                 </div>
             </div>
         </section>
@@ -107,7 +117,7 @@
             <div class="arch-preview-container reveal-on-scroll" onclick="openLightbox()">
                 <img src="assets/Anemo-system-design.svg" alt="AnemoDB Architecture Diagram" class="arch-diagram-img" id="previewDiagramImg">
                 <div class="zoom-badge">
-                    <span>🔍</span> Click to Expand & Zoom Blueprint
+                    <i class="bi bi-zoom-in" aria-hidden="true"></i> Click to Expand & Zoom Blueprint
                 </div>
             </div>
         </section>
@@ -121,11 +131,11 @@
 
             <!-- Flow Banner -->
             <div class="flow-banner reveal-on-scroll">
-                <div class="flow-step"><span>Client Query</span> <span class="flow-arrow">➔</span></div>
-                <div class="flow-step"><span>Non-Blocking Listener</span> <span class="flow-arrow">➔</span></div>
-                <div class="flow-step"><span>Bounded Queue</span> <span class="flow-arrow">➔</span></div>
-                <div class="flow-step"><span>Worker Thread Pool</span> <span class="flow-arrow">➔</span></div>
-                <div class="flow-step"><span>LRU Coalescing Cache</span> <span class="flow-arrow">➔</span></div>
+                <div class="flow-step"><span>Client Query</span> <i class="bi bi-arrow-right flow-arrow" aria-hidden="true"></i></div>
+                <div class="flow-step"><span>Non-Blocking Listener</span> <i class="bi bi-arrow-right flow-arrow" aria-hidden="true"></i></div>
+                <div class="flow-step"><span>Bounded Queue</span> <i class="bi bi-arrow-right flow-arrow" aria-hidden="true"></i></div>
+                <div class="flow-step"><span>Worker Thread Pool</span> <i class="bi bi-arrow-right flow-arrow" aria-hidden="true"></i></div>
+                <div class="flow-step"><span>LRU Coalescing Cache</span> <i class="bi bi-arrow-right flow-arrow" aria-hidden="true"></i></div>
                 <div class="flow-step"><span>PostgreSQL Pool</span></div>
             </div>
 
@@ -155,7 +165,7 @@
 
             <!-- Inspector Panel -->
             <div class="inspector-box reveal-on-scroll" id="inspectorBox">
-                <div class="inspector-title" id="inspectorTitle">⚡ Stage 1: Non-Blocking Network Listener</div>
+                <div class="inspector-title" id="inspectorTitle"><i class="bi bi-lightning-charge-fill" aria-hidden="true"></i> Stage 1: Non-Blocking Network Listener</div>
                 <div class="inspector-desc" id="inspectorDesc">
                     The listener runs on a dedicated POSIX thread bound to port 8080. When a client connects, the listener immediately performs <code>accept()</code> and enqueues the raw socket descriptor into the bounded task queue. Because reading is delegated to worker threads, slow or hanging clients can never stall the server's ability to accept new connections. If the queue is saturated, it replies with <code>[ERROR] SERVER_BUSY_QUEUE_FULL</code> instantly.
                 </div>
@@ -285,7 +295,7 @@
                 </div>
 
                 <div class="bench-explanation-card">
-                    <h4>💡 What this benchmark proves:</h4>
+                    <h4><i class="bi bi-lightbulb-fill" aria-hidden="true"></i> What this benchmark proves:</h4>
                     Relational databases spend significant CPU cycles tokenizing SQL queries, generating execution plans, reading disk pages into buffer pools, and arbitrating locks. AnemoDB caches the final formatted response directly in memory with <code>O(1)</code> hash lookups, reducing query latencies from <strong>18ms–32ms</strong> down to a blazing <strong>0.26ms–0.38ms</strong>.
                 </div>
             </div>
@@ -344,7 +354,7 @@
                 </div>
 
                 <div class="bench-explanation-card">
-                    <h4>💡 What this benchmark proves:</h4>
+                    <h4><i class="bi bi-lightbulb-fill" aria-hidden="true"></i> What this benchmark proves:</h4>
                     In high-concurrency systems, <strong>tail latency</strong> (P99 and P99.9) is critical. Under heavy load, PostgreSQL experiences unpredictable spikes up to <strong>82.5ms</strong> caused by disk checkpoints, lock contention, and OS context switching. Because AnemoDB serves responses from user-space RAM, its P99.9 tail remains strictly bounded at <strong>1.15ms</strong>.
                 </div>
             </div>
@@ -403,7 +413,7 @@
                 </div>
 
                 <div class="bench-explanation-card">
-                    <h4>💡 What this benchmark proves:</h4>
+                    <h4><i class="bi bi-lightbulb-fill" aria-hidden="true"></i> What this benchmark proves:</h4>
                     PostgreSQL hits a <strong>concurrency wall</strong> around 20–50 threads (~740 req/s) due to internal process connection overhead and mutex contention on database catalogs. AnemoDB uses an asynchronous multi-threaded worker pool with bounded request queues, sustaining over <strong>24,000 req/s</strong> with zero degradation.
                 </div>
             </div>
@@ -450,7 +460,7 @@
                 </div>
 
                 <div class="bench-explanation-card">
-                    <h4>💡 What this benchmark proves:</h4>
+                    <h4><i class="bi bi-lightbulb-fill" aria-hidden="true"></i> What this benchmark proves:</h4>
                     The <strong>Thundering Herd Problem</strong> happens when a popular cache key expires and hundreds of clients hit the database simultaneously to re-fetch it, often crashing the database. AnemoDB's single-flight design promotes the first thread to <strong>Leader</strong> while all other concurrent requests become <strong>Followers</strong>, fulfilling 100 client queries with exactly 1 database fetch.
                 </div>
             </div>
@@ -464,37 +474,37 @@
 
         <div class="features-grid">
             <div class="feature-card reveal-on-scroll">
-                <div class="feature-icon icon-cyan">⚡</div>
+                <div class="feature-icon icon-cyan"><i class="bi bi-lightning-charge-fill" aria-hidden="true"></i></div>
                 <h3>Request Coalescing (Single-Flight)</h3>
                 <p>Eliminates the Thundering Herd Problem. If 500 concurrent threads request the same expired or missed key, exactly <strong>1 leader thread</strong> queries PostgreSQL while followers sleep and reuse the result.</p>
             </div>
 
             <div class="feature-card reveal-on-scroll">
-                <div class="feature-icon icon-green">🎯</div>
+                <div class="feature-icon icon-green"><i class="bi bi-bullseye" aria-hidden="true"></i></div>
                 <h3>Fast-Path O(1) LRU Eviction</h3>
                 <p>Combines an unordered hash map directory with a doubly-linked list. Tail eviction operates in O(1) time while protecting in-progress reservations and normalizing after bursts.</p>
             </div>
 
             <div class="feature-card reveal-on-scroll">
-                <div class="feature-icon icon-purple">🛡️</div>
+                <div class="feature-icon icon-purple"><i class="bi bi-shield-check" aria-hidden="true"></i></div>
                 <h3>Non-Blocking Listener Loop</h3>
                 <p>The accept thread immediately dispatches incoming sockets to the worker queue, preventing Slowloris socket starvation and maintaining responsiveness under burst loads.</p>
             </div>
 
             <div class="feature-card reveal-on-scroll">
-                <div class="feature-icon icon-blue">🔒</div>
+                <div class="feature-icon icon-blue"><i class="bi bi-lock-fill" aria-hidden="true"></i></div>
                 <h3>PostgreSQL Read-Only Scope</h3>
                 <p>Two layers of defense-in-depth: query sanitization at the edge rejecting non-read statements, backed by <code>pqxx::read_transaction</code> (<code>BEGIN READ ONLY;</code>) at the database layer.</p>
             </div>
 
             <div class="feature-card reveal-on-scroll">
-                <div class="feature-icon icon-cyan">📊</div>
+                <div class="feature-icon icon-cyan"><i class="bi bi-bar-chart-line-fill" aria-hidden="true"></i></div>
                 <h3>In-Band Telemetry & Dashboard</h3>
                 <p>Send <code>STATS</code> for ANSI terminal reports or <code>STATS_JSON</code> for external monitoring via the bundled Flask + Chart.js web dashboard with sliding-window throughput.</p>
             </div>
 
             <div class="feature-card reveal-on-scroll">
-                <div class="feature-icon icon-green">🔌</div>
+                <div class="feature-icon icon-green"><i class="bi bi-plug-fill" aria-hidden="true"></i></div>
                 <h3>Resilient Connection Pool</h3>
                 <p>Fixed-size thread pool of persistent PostgreSQL connections with fail-fast startup checks, idle auto-reconnection, and acquisition timeouts.</p>
             </div>
@@ -554,23 +564,23 @@
             </div>
 
             <div class="bench-explanation-card reveal-on-scroll">
-                <h4>🔒 Read-Only Safety Architecture Guarantee:</h4>
+                <h4><i class="bi bi-shield-lock-fill" aria-hidden="true"></i> Read-Only Safety Architecture Guarantee:</h4>
                 AnemoDB is architected exclusively for <strong>read query offloading</strong>. Non-read operations (<code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>DROP</code>, <code>ALTER</code>) are strictly rejected at the cache edge, and downstream transactions run with <code>BEGIN READ ONLY;</code>. This decoupling ensures that any underlying database engine is protected against corruption, lock contention, and connection pool exhaustion.
             </div>
         </section>
 
         <!-- ───────── CLIENT INTEGRATION GUIDE ───────── -->
         <section class="integration-box reveal-on-scroll" id="integration">
-            <div class="section-title" style="text-align: left; margin-bottom: 24px;">
+            <div class="section-title section-title-left">
                 <h2>Client Integration & How to Use</h2>
                 <p>AnemoDB communicates over plain TCP using a simple, delimiter-framed protocol terminated by <span class="code-inline">&lt;EOQ&gt;</span>. Query AnemoDB from any language in under 10 lines of code.</p>
             </div>
 
             <div class="code-tabs-nav">
-                <button class="code-tab-btn active" onclick="switchCodeTab('python')">🐍 Python</button>
-                <button class="code-tab-btn" onclick="switchCodeTab('node')">🟢 Node.js</button>
-                <button class="code-tab-btn" onclick="switchCodeTab('go')">🔵 Go</button>
-                <button class="code-tab-btn" onclick="switchCodeTab('bash')">💻 Bash / CLI (nc)</button>
+                <button class="code-tab-btn active" onclick="switchCodeTab('python')"><i class="bi bi-filetype-py" aria-hidden="true"></i> Python</button>
+                <button class="code-tab-btn" onclick="switchCodeTab('node')"><i class="bi bi-filetype-js" aria-hidden="true"></i> Node.js</button>
+                <button class="code-tab-btn" onclick="switchCodeTab('go')"><i class="bi bi-braces" aria-hidden="true"></i> Go</button>
+                <button class="code-tab-btn" onclick="switchCodeTab('bash')"><i class="bi bi-terminal" aria-hidden="true"></i> Bash / CLI (nc)</button>
             </div>
 
             <!-- Python Pane -->
@@ -686,21 +696,21 @@ echo "STATS_JSON&lt;EOQ&gt;" | nc localhost 8080</code></pre>
 
         <!-- ───────── PROTOCOL SPECIFICATION ───────── -->
         <section class="protocol-box reveal-on-scroll" id="protocol">
-            <div class="section-title" style="margin-bottom: 24px; text-align: left;">
+            <div class="section-title section-title-left">
                 <h2>Framed Protocol Specification</h2>
                 <p>Clients communicate with AnemoDB over TCP using a simple, delimiter-framed protocol terminated by <span class="code-inline">&lt;EOQ&gt;</span>.</p>
             </div>
-            
-            <p style="margin-bottom: 12px;"><strong>Client Request:</strong></p>
-            <div style="background: var(--code-bg); padding: 14px 20px; border-radius: 8px; font-family: 'Fira Code', monospace; margin-bottom: 20px; border: 1px solid var(--border);">
-                SELECT student_id, name, department_name FROM students WHERE student_id = 42;<br>
-                <span style="color: var(--accent-cyan);">&lt;EOQ&gt;</span>
+
+            <p class="protocol-label"><strong>Client Request:</strong></p>
+            <div class="protocol-code">
+                <span class="tok-kw">SELECT</span> student_id, name, department_name <span class="tok-kw">FROM</span> students <span class="tok-kw">WHERE</span> student_id = <span class="tok-num">42</span>;<br>
+                <span class="protocol-eoq">&lt;EOQ&gt;</span>
             </div>
 
-            <p style="margin-bottom: 12px;"><strong>Server Response:</strong></p>
-            <div style="background: var(--code-bg); padding: 14px 20px; border-radius: 8px; font-family: 'Fira Code', monospace; border: 1px solid var(--border);">
-                [CACHE HIT] 42 | Alice Johnson | Computer Science<br>
-                <span style="color: var(--accent-cyan);">&lt;EOQ&gt;</span>
+            <p class="protocol-label"><strong>Server Response:</strong></p>
+            <div class="protocol-code">
+                <span class="tok-str">[CACHE HIT]</span> <span class="tok-num">42</span> | Alice Johnson | Computer Science<br>
+                <span class="protocol-eoq">&lt;EOQ&gt;</span>
             </div>
         </section>
 
@@ -710,16 +720,19 @@ echo "STATS_JSON&lt;EOQ&gt;" | nc localhost 8080</code></pre>
                 AnemoDB is open-source software licensed under the <a href="https://github.com/NirjharDebnath/AnemoDB/blob/main/LICENSE">MIT License</a>.<br>
                 Crafted with modern C++17 • As Fast As The Winds 🍃
             </p>
+            <p class="footer-credit">
+                Genshin Impact artwork and related imagery on this page belong to HoYoverse.
+            </p>
         </footer>
     </div>
 
     <!-- ───────── LIGHTBOX MODAL ───────── -->
     <div class="lightbox-overlay" id="lightboxOverlay" onclick="closeLightboxOnBackdrop(event)">
         <div class="lightbox-controls">
-            <button class="btn-lightbox" onclick="zoomIn()" title="Zoom In (+)">+</button>
-            <button class="btn-lightbox" onclick="zoomOut()" title="Zoom Out (−)">−</button>
-            <button class="btn-lightbox" onclick="resetZoom()" title="Reset (1:1)">⟲</button>
-            <button class="btn-lightbox" onclick="closeLightbox()" title="Close (Esc)">✕</button>
+            <button class="btn-lightbox" onclick="zoomIn()" title="Zoom In (+)" aria-label="Zoom in"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
+            <button class="btn-lightbox" onclick="zoomOut()" title="Zoom Out (−)" aria-label="Zoom out"><i class="bi bi-dash-lg" aria-hidden="true"></i></button>
+            <button class="btn-lightbox" onclick="resetZoom()" title="Reset (1:1)" aria-label="Reset zoom"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button>
+            <button class="btn-lightbox" onclick="closeLightbox()" title="Close (Esc)" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
         </div>
         <div class="lightbox-img-wrapper" id="imgWrapper">
             <img src="assets/Anemo-system-design.svg" alt="Architecture Blueprint" class="lightbox-img" id="lightboxImg">

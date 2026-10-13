@@ -2,7 +2,8 @@
  * AnemoDB Documentation Interactive Client Script
  * Handles lightbox zooming, clipboard copying, benchmark tab switching,
  * code language tab switching, architecture inspector interactions,
- * and scroll-triggered counter/bar animations.
+ * scroll-triggered counter/bar animations, the mobile navigation menu,
+ * responsive table labels, and code snippet syntax highlighting.
  */
 
 // ───────── 1. CLIPBOARD COPY INSTALLATION ─────────
@@ -17,7 +18,7 @@ anemo_db`;
         const btn = document.getElementById('copyInstallBtn');
         const text = document.getElementById('copyBtnText');
         btn.classList.add('copied');
-        text.innerText = '✓ Copied to Clipboard!';
+        text.innerHTML = '<i class="bi bi-check-lg" aria-hidden="true"></i> Copied to Clipboard!';
 
         setTimeout(() => {
             btn.classList.remove('copied');
@@ -31,19 +32,23 @@ anemo_db`;
 // ───────── 2. INTERACTIVE PIPELINE INSPECTOR ─────────
 const stages = [
     {
-        title: "⚡ Stage 1: Non-Blocking Network Listener",
+        icon: "lightning-charge-fill",
+        title: "Stage 1: Non-Blocking Network Listener",
         desc: "The listener runs on a dedicated POSIX thread bound to port 8080. When a client connects, the listener immediately performs accept() and delegates the raw socket descriptor into the bounded task queue. Because reading is performed asynchronously by worker threads, slow or hanging clients can never stall the server's ability to accept new connections. If the queue is saturated, it replies with [ERROR] SERVER_BUSY_QUEUE_FULL instantly."
     },
     {
-        title: "📦 Stage 2: Bounded Task Queue (ThreadSafeQueue)",
+        icon: "box-seam-fill",
+        title: "Stage 2: Bounded Task Queue (ThreadSafeQueue)",
         desc: "An internal producer-consumer queue with a default capacity of 5,000 tasks. It uses std::mutex and std::condition_variable for sleep-wakeup signaling. Tasks are moved with C++17 move semantics (zero memory copies). When under peak burst pressure, excess requests are rejected fast, protecting the server against out-of-memory crashes."
     },
     {
-        title: "🌪️ Stage 3: Request Coalescing (Single-Flight LRU Cache)",
+        icon: "tornado",
+        title: "Stage 3: Request Coalescing (Single-Flight LRU Cache)",
         desc: "When multiple worker threads miss the cache on the exact same query concurrently (e.g., during a traffic spike), the first worker becomes the LEADER and marks the cache node IN_PROGRESS. All subsequent threads become FOLLOWERS and sleep on the node's condition variable. The leader queries PostgreSQL once, populates the value, and calls notify_all()—satisfying all 500 requests with a single database trip!"
     },
     {
-        title: "🐘 Stage 4: Resilient PostgreSQL Connection Pool",
+        icon: "database-fill-check",
+        title: "Stage 4: Resilient PostgreSQL Connection Pool",
         desc: "A pre-warmed pool of persistent libpqxx connections matching the worker thread count. On misses, workers acquire a connection with a 5-second timeout. Connections are health-checked with auto-reconnection if idle sockets drop. Queries are executed strictly within a pqxx::read_transaction scope, ensuring complete read-only safety."
     }
 ];
@@ -52,8 +57,16 @@ function inspectStage(index) {
     document.querySelectorAll('.arch-node').forEach((node, i) => {
         node.classList.toggle('active', i === index);
     });
-    document.getElementById('inspectorTitle').innerText = stages[index].title;
+    const title = document.getElementById('inspectorTitle');
+    title.innerHTML = `<i class="bi bi-${stages[index].icon}" aria-hidden="true"></i> `;
+    title.append(stages[index].title);
     document.getElementById('inspectorDesc').innerText = stages[index].desc;
+
+    // Restart the swap-in animation: drop the class, force a reflow, add it back
+    const box = document.getElementById('inspectorBox');
+    box.classList.remove('inspector-swap');
+    void box.offsetWidth;
+    box.classList.add('inspector-swap');
 }
 
 // ───────── 3. BENCHMARK TABS SWITCHING ─────────
@@ -100,7 +113,7 @@ function copySnippet(snippetId, btn) {
     const textToCopy = el.innerText;
     navigator.clipboard.writeText(textToCopy).then(() => {
         const origText = btn.innerText;
-        btn.innerText = '✓ Copied!';
+        btn.innerHTML = '<i class="bi bi-check-lg" aria-hidden="true"></i> Copied!';
         btn.style.color = 'var(--accent-green)';
         btn.style.borderColor = 'var(--accent-green)';
         setTimeout(() => {
@@ -137,20 +150,23 @@ function switchDiagramFormat(format) {
 let currentZoom = 1.0;
 const lightboxOverlay = document.getElementById('lightboxOverlay');
 const lightboxImg = document.getElementById('lightboxImg');
+const imgWrapper = document.getElementById('imgWrapper');
 
 function openLightbox() {
     currentZoom = 1.0;
-    updateZoom();
     lightboxOverlay.classList.add('active');
     document.body.style.overflow = 'hidden';
+    // Size after the overlay is visible so the wrapper has real dimensions
+    updateZoom();
 }
 
 function closeLightbox() {
     lightboxOverlay.classList.remove('active');
-    document.body.style.overflow = 'auto';
+    document.body.style.overflow = '';
 }
 
 function closeLightboxOnBackdrop(e) {
+    if (dragMoved) return;
     if (e.target === lightboxOverlay || e.target.id === 'imgWrapper') {
         closeLightbox();
     }
@@ -172,13 +188,55 @@ function resetZoom() {
 }
 
 function updateZoom() {
-    lightboxImg.style.transform = `scale(${currentZoom})`;
+    // At 1.0 the whole diagram fits inside the wrapper; zooming widens the image
+    // itself so the overflow stays scrollable in every direction.
+    const ratio = lightboxImg.naturalHeight ? lightboxImg.naturalWidth / lightboxImg.naturalHeight : 0;
+    const fitWidth = ratio
+        ? Math.min(imgWrapper.clientWidth, imgWrapper.clientHeight * ratio)
+        : imgWrapper.clientWidth;
+    lightboxImg.style.width = `${Math.round(fitWidth * currentZoom)}px`;
 }
 
-// Keyboard Shortcut: Escape to close lightbox
+// Re-fit whenever the wrapper itself changes size (window resize, rotation,
+// mobile browser chrome showing or hiding)
+if ('ResizeObserver' in window) {
+    new ResizeObserver(() => {
+        if (lightboxOverlay.classList.contains('active')) updateZoom();
+    }).observe(imgWrapper);
+}
+
+// Mouse drag-to-pan (touch devices scroll the wrapper natively)
+let dragStart = null;
+let dragMoved = false;
+
+imgWrapper.addEventListener('mousedown', (e) => {
+    dragStart = { x: e.clientX, y: e.clientY, left: imgWrapper.scrollLeft, top: imgWrapper.scrollTop };
+    dragMoved = false;
+    e.preventDefault();
+});
+
+window.addEventListener('mousemove', (e) => {
+    if (!dragStart) return;
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
+    imgWrapper.scrollLeft = dragStart.left - dx;
+    imgWrapper.scrollTop = dragStart.top - dy;
+});
+
+window.addEventListener('mouseup', () => {
+    dragStart = null;
+    // Cleared after the click event that follows mouseup has been handled
+    setTimeout(() => { dragMoved = false; }, 0);
+});
+
+// Keyboard Shortcut: Escape to close lightbox / mobile nav
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && lightboxOverlay.classList.contains('active')) {
+    if (e.key !== 'Escape') return;
+    if (lightboxOverlay.classList.contains('active')) {
         closeLightbox();
+    } else {
+        closeNav();
     }
 });
 
@@ -264,11 +322,26 @@ function initScrollAnimations() {
 
         barElements.forEach(bar => barObserver.observe(bar));
 
+        // Cards that share a grid reveal one after another instead of all at once
+        document.querySelectorAll('.arch-flow-grid, .metrics-cards-grid, .features-grid, .db-grid').forEach(grid => {
+            Array.from(grid.children).forEach((card, i) => {
+                card.dataset.revealDelay = String(i * 80);
+            });
+        });
+
         const revealObserver = new IntersectionObserver((entries, observer) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    entry.target.classList.add('revealed');
-                    observer.unobserve(entry.target);
+                    const el = entry.target;
+                    const delay = parseInt(el.dataset.revealDelay || '0', 10);
+                    el.style.transitionDelay = `${delay}ms`;
+                    el.classList.add('revealed');
+                    observer.unobserve(el);
+                    // Once revealed, hand the element back to its own hover transition
+                    setTimeout(() => {
+                        el.classList.remove('reveal-on-scroll', 'revealed');
+                        el.style.transitionDelay = '';
+                    }, delay + 800);
                 }
             });
         }, { threshold: 0.08 });
@@ -282,9 +355,131 @@ function initScrollAnimations() {
     }
 }
 
+// ───────── 10. MOBILE NAVIGATION MENU ─────────
+const siteHeader = document.getElementById('siteHeader');
+const navToggle = document.getElementById('navToggle');
+
+function toggleNav() {
+    const isOpen = siteHeader.classList.toggle('nav-open');
+    navToggle.setAttribute('aria-expanded', String(isOpen));
+}
+
+function closeNav() {
+    siteHeader.classList.remove('nav-open');
+    navToggle.setAttribute('aria-expanded', 'false');
+}
+
+// Header gains a solid backdrop and shadow once the page leaves the top
+function updateHeaderShadow() {
+    siteHeader.classList.toggle('scrolled', window.scrollY > 8);
+}
+
+window.addEventListener('scroll', updateHeaderShadow, { passive: true });
+updateHeaderShadow();
+
+// Close the menu after picking a link or tapping outside the header
+document.querySelectorAll('.nav-links a').forEach(link => {
+    link.addEventListener('click', closeNav);
+});
+
+document.addEventListener('click', (e) => {
+    if (!siteHeader.contains(e.target)) closeNav();
+});
+
+// ───────── 11. RESPONSIVE TABLE LABELS ─────────
+// Copies each column header onto its cells so the stacked mobile layout
+// (see RESPONSIVE in style.css) can label every value.
+function initTableLabels() {
+    document.querySelectorAll('.comparison-table-wrap table').forEach(table => {
+        const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+        table.querySelectorAll('tbody tr').forEach(row => {
+            Array.from(row.children).forEach((cell, i) => {
+                cell.setAttribute('data-label', headers[i] || '');
+            });
+        });
+    });
+}
+
+// ───────── 12. SYNTAX HIGHLIGHTING ─────────
+// Each pattern captures, in order: (1) comment, (2) string, (3) number, (4) identifier.
+// Colours come from the .tok-* classes in style.css.
+const highlightLangs = {
+    python: {
+        pattern: /(#.*)|("""[\s\S]*?"""|[fbr]{0,2}(?:"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'))|(\b\d+(?:\.\d+)?\b)|([A-Za-z_]\w*)/g,
+        keywords: ['import', 'from', 'def', 'return', 'with', 'as', 'while', 'for', 'if', 'elif', 'else', 'not', 'in', 'and', 'or', 'break', 'continue', 'pass', 'True', 'False', 'None'],
+        builtins: ['str', 'int', 'float', 'bytes', 'print', 'len']
+    },
+    node: {
+        pattern: /(\/\/.*)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_$][\w$]*)/g,
+        keywords: ['const', 'let', 'var', 'function', 'return', 'new', 'if', 'else', 'async', 'await', 'true', 'false', 'null', 'undefined'],
+        builtins: ['require', 'Promise', 'console']
+    },
+    go: {
+        pattern: /(\/\/.*)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`[^`]*`)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_]\w*)/g,
+        keywords: ['package', 'import', 'func', 'return', 'if', 'else', 'for', 'range', 'defer', 'var', 'const', 'type', 'struct', 'nil', 'true', 'false'],
+        builtins: ['string', 'error', 'int', 'bool', 'byte']
+    },
+    bash: {
+        pattern: /(#.*)|("(?:\\.|[^"\\\n])*"|'[^'\n]*')|(\b\d+\b)|([A-Za-z_][\w-]*)/g,
+        keywords: [],
+        builtins: ['echo'],
+        commands: ['nc']
+    }
+};
+
+function escapeHtml(text) {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function highlightCode(source, lang) {
+    const { pattern, keywords, builtins, commands = [] } = highlightLangs[lang];
+    const wrap = (cls, text) => `<span class="${cls}">${escapeHtml(text)}</span>`;
+    let html = '';
+    let last = 0;
+
+    pattern.lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(source)) !== null) {
+        html += escapeHtml(source.slice(last, match.index));
+        last = pattern.lastIndex;
+
+        const [text, comment, string, number, ident] = match;
+        if (comment) {
+            html += wrap('tok-comment', text);
+        } else if (string) {
+            html += wrap('tok-str', text);
+        } else if (number) {
+            html += wrap('tok-num', text);
+        } else if (keywords.includes(ident)) {
+            html += wrap('tok-kw', text);
+        } else if (builtins.includes(ident)) {
+            html += wrap('tok-builtin', text);
+        } else if (commands.includes(ident) || source[last] === '(') {
+            html += wrap('tok-fn', text);
+        } else {
+            html += escapeHtml(text);
+        }
+    }
+
+    return html + escapeHtml(source.slice(last));
+}
+
+function initSyntaxHighlight() {
+    Object.keys(highlightLangs).forEach(lang => {
+        const code = document.querySelector(`#codeSnippet-${lang} code`);
+        if (code) code.innerHTML = highlightCode(code.textContent, lang);
+    });
+}
+
 // Initialize on DOM ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initScrollAnimations);
-} else {
+function init() {
+    initSyntaxHighlight();
+    initTableLabels();
     initScrollAnimations();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
 }
