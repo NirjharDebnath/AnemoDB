@@ -154,4 +154,4 @@ python "Cache Benchmark/benchmark_script3.py"
 
 ## License
 
-No explicit license file is currently present in this repository.
+This project is licensed under the MIT License.
