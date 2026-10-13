@@ -35,4 +35,12 @@ clean:
 	@echo ">>> Cleaning build artifacts..."
 	rm -f $(TARGET) $(SRC_DIR)/anemo_db
 
-.PHONY: all run install uninstall clean
+dashboard:
+	@echo ">>> Launching AnemoDB Telemetry Web Dashboard (http://127.0.0.1:5000)..."
+	python3 "Web Dashboard/web_dashboard.py"
+
+monitor:
+	@echo ">>> Launching AnemoDB Terminal Telemetry Monitor..."
+	python3 "Cache Monitor/monitor_cache.py"
+
+.PHONY: all run install uninstall clean dashboard monitor

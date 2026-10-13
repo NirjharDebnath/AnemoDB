@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anemo DB • Server Dashboard</title>
+    <title>AnemoDB • Telemetry & Benchmark Console</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -11,17 +11,21 @@
 <body>
 <header class="header">
     <div class="brand">
-        <div class="logo">A</div>
+        <div class="logo">🍃</div>
         <div>
-            <h1>Anemo DB</h1>
-            <p>High-performance C++ multi-threaded read-only cache</p>
+            <h1>AnemoDB</h1>
+            <p>High-Performance C++ Read-Through Cache Telemetry</p>
         </div>
     </div>
     <div class="header-actions">
         <button id="themeToggle" class="theme-toggle">☀️ Light</button>
         <div id="status" class="status">
             <span class="status-dot"></span>
-            <span id="statusText">Connecting</span>
+            <span id="statusText">Cache: Connecting</span>
+        </div>
+        <div id="pgStatus" class="status">
+            <span class="status-dot"></span>
+            <span id="pgStatusText">DB: Checking</span>
         </div>
     </div>
 </header>
@@ -30,92 +34,154 @@
     <div class="server-bar">
         <div class="server-info">
             <div>
-                <div class="server-label">Anemo Instance</div>
-                <div class="server-address">tcp://{{ host }}:{{ port }}</div>
+                <div class="server-label">Anemo Cache Instance</div>
+                <div class="server-address" id="serverAddr">tcp://{{ host }}:{{ port }}</div>
             </div>
         </div>
         <div class="updated">
-            <span style="margin-right: 16px;">
-                Anemo Threads: <strong id="threadCount" style="color: var(--cyan);">0 / 0</strong>
+            <span style="margin-right: 18px;">
+                Worker Pool: <strong id="threadCount" style="color: var(--cyan);">0 / 0</strong>
             </span>
             Last update: <span id="lastUpdated">--</span>
         </div>
     </div>
 
-    <!-- Interactive Traffic Controller -->
+    <!-- Interactive Traffic Controller & Benchmark Generator -->
     <div class="panel" style="margin-bottom: 20px;">
         <div class="panel-header">
             <div>
-                <div class="panel-title">Dynamic Benchmark & Load Generator</div>
-                <div class="panel-description">Adjust live concurrent client loads directly against Cache, PostgreSQL, or Both</div>
+                <div class="panel-title">Dynamic Benchmark & Traffic Generator</div>
+                <div class="panel-description">Inject concurrent read workloads directly against Cache, PostgreSQL, or Both</div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                 <select id="simTarget" class="theme-toggle" style="border-radius: 8px;">
                     <option value="both">Target: Both (Direct Comparison)</option>
                     <option value="cache">Target: Cache Only</option>
                     <option value="db">Target: PostgreSQL Only</option>
                 </select>
                 <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
-                    <span>Load (Number of Clients):</span>
+                    <span>Concurrency:</span>
                     <input type="range" id="threadSlider" min="1" max="24" value="4" style="cursor: pointer;">
-                    <strong id="threadVal" style="color: var(--blue);">4</strong>
+                    <strong id="threadVal" style="color: var(--blue);">4 clients</strong>
                 </div>
-                <button id="simToggleBtn" class="theme-toggle" style="background: var(--blue); color: #fff; font-weight: bold;">▶ Start Load</button>
+                <button id="simToggleBtn" class="theme-toggle" style="background: var(--blue); color: #fff; font-weight: bold; border-color: var(--blue);">▶ Start Load</button>
             </div>
+        </div>
+        <!-- Live Query Inspection Line -->
+        <div class="query-ticker">
+            <span class="ticker-label">⚡ Active Query:</span>
+            <code id="activeQuery">SELECT student_id, name FROM students WHERE student_id = 42;</code>
         </div>
     </div>
 
+    <!-- Core Metrics Grid -->
     <section class="metrics">
-        <div class="metric" style="--accent: var(--blue)"><div class="metric-label">Hit Rate</div><div class="metric-value" id="hitRate">0.0%</div><div class="metric-sub">Cache efficiency</div></div>
-        <div class="metric" style="--accent: var(--cyan)"><div class="metric-label">Throughput</div><div class="metric-value" id="throughput">0.00</div><div class="metric-sub">requests / second</div></div>
-        <div class="metric" style="--accent: var(--green)"><div class="metric-label">Avg Latency</div><div class="metric-value" id="avgLatency">0.00 ms</div><div class="metric-sub">request processing time</div></div>
-        <div class="metric" style="--accent: var(--purple)"><div class="metric-label">Uptime</div><div class="metric-value" id="uptime">0s</div><div class="metric-sub">server runtime</div></div>
-        <div class="metric" style="--accent: var(--yellow)"><div class="metric-label">Cache Entries</div><div class="metric-value" id="slotUsage">0 / 0</div><div class="metric-sub">occupied / capacity</div></div>
-        <div class="metric" style="--accent: var(--green)"><div class="metric-label">Memory</div><div class="metric-value" id="memUsage">0 KB</div><div class="metric-sub">estimated footprint</div></div>
-        <div class="metric" style="--accent: var(--blue)"><div class="metric-label">Total Requests</div><div class="metric-value" id="totalRequests">0</div><div class="metric-sub">requests processed</div></div>
-        <div class="metric" style="--accent: var(--red)"><div class="metric-label">Queue</div><div class="metric-value" id="queue">0</div><div class="metric-sub">pending tasks</div></div>
+        <div class="metric" style="--accent: var(--blue)">
+            <div class="metric-label">Hit Rate</div>
+            <div class="metric-value" id="hitRate">0.0%</div>
+            <div class="metric-sub">Cache efficiency</div>
+        </div>
+        <div class="metric" style="--accent: var(--cyan)">
+            <div class="metric-label">Throughput</div>
+            <div class="metric-value" id="throughput">0.00</div>
+            <div class="metric-sub">requests / second</div>
+        </div>
+        <div class="metric" style="--accent: var(--green)">
+            <div class="metric-label">Avg Latency</div>
+            <div class="metric-value" id="avgLatency">0.00 ms</div>
+            <div class="metric-sub">request processing time</div>
+        </div>
+        <div class="metric" style="--accent: var(--purple)">
+            <div class="metric-label">Uptime</div>
+            <div class="metric-value" id="uptime">0s</div>
+            <div class="metric-sub">server runtime</div>
+        </div>
+        <div class="metric" style="--accent: var(--yellow)">
+            <div class="metric-label">Cache Entries</div>
+            <div class="metric-value" id="slotUsage">0 / 0</div>
+            <div class="metric-sub">occupied / capacity</div>
+        </div>
+        <div class="metric" style="--accent: var(--green)">
+            <div class="metric-label">Memory</div>
+            <div class="metric-value" id="memUsage">0.00 KB</div>
+            <div class="metric-sub">estimated footprint</div>
+        </div>
+        <div class="metric" style="--accent: var(--blue)">
+            <div class="metric-label">Total Requests</div>
+            <div class="metric-value" id="totalRequests">0</div>
+            <div class="metric-sub">requests processed</div>
+        </div>
+        <div class="metric" style="--accent: var(--red)">
+            <div class="metric-label">Queue Depth</div>
+            <div class="metric-value" id="queue">0</div>
+            <div class="metric-sub">pending task queue</div>
+        </div>
     </section>
 
+    <!-- Visual Charts & Telemetry Grid -->
     <section class="panel-grid">
-        <!-- New Latency Comparison Chart -->
+        <!-- Direct Latency Comparison Chart -->
         <div class="panel" id="comparisonPanel">
             <div class="panel-header">
                 <div>
                     <div class="panel-title">Direct Latency Comparison (Live)</div>
                     <div class="panel-description">Cache response speed vs. PostgreSQL direct response (ms)</div>
                 </div>
+                <div id="speedupBadge" class="badge-speedup">--x Speedup</div>
             </div>
             <div class="chart-container"><canvas id="latencyComparisonChart"></canvas></div>
         </div>
 
+        <!-- Request Throughput Trend Chart -->
         <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">Request Throughput</div><div class="panel-description">Recent requests per second</div></div></div>
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Request Throughput Trend</div>
+                    <div class="panel-description">Sliding-window queries per second</div>
+                </div>
+            </div>
             <div class="chart-container"><canvas id="throughputChart"></canvas></div>
         </div>
 
+        <!-- Hit vs Miss Distribution Donut -->
         <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">Cache Performance</div><div class="panel-description">Hit vs miss distribution</div></div></div>
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Cache Hit / Miss Ratio</div>
+                    <div class="panel-description">Distribution of served queries</div>
+                </div>
+            </div>
             <div class="chart-container"><canvas id="hitMissChart"></canvas></div>
         </div>
 
+        <!-- Resource Utilization & Capacity -->
         <div class="panel">
-            <div class="panel-header"><div><div class="panel-title">Resource Utilization</div><div class="panel-description">Current memory slot capacity</div></div></div>
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Resource Utilization & Capacity</div>
+                    <div class="panel-description">In-memory LRU slots and hashtable directory</div>
+                </div>
+            </div>
             <div class="utilization">
-                <div class="util-header"><span>Slots utilized</span><span id="utilText">0%</span></div>
+                <div class="util-header">
+                    <span>Slots Utilized</span>
+                    <span id="utilText">0.0%</span>
+                </div>
                 <div class="progress"><div id="utilBar" class="progress-bar"></div></div>
             </div>
-            <div class="utilization" style="margin-top: 15px; border-top: 1px solid var(--border);">
-                <div class="util-header"><span>Cache Hits</span><strong id="hits">0</strong></div>
-                <div class="util-header"><span>Cache Misses</span><strong id="misses">0</strong></div>
-                <div class="util-header"><span>Directory Entries</span><strong id="directory">0</strong></div>
+            <div class="utilization" style="margin-top: 18px; border-top: 1px solid var(--border);">
+                <div class="util-header"><span>Cache Hits</span><strong id="hits" style="color: var(--green);">0</strong></div>
+                <div class="util-header"><span>Cache Misses</span><strong id="misses" style="color: var(--red);">0</strong></div>
+                <div class="util-header"><span>Directory Map Size</span><strong id="directory">0</strong></div>
+                <div class="util-header"><span>Traffic Generator Req</span><strong id="trafficReqCount">0</strong></div>
             </div>
         </div>
     </section>
 </main>
 
 <footer>
-    <span>Anemo • Telemetry Console</span>
-    <span>Auto-refresh: 2s</span>
+    <span>AnemoDB • High-Throughput Read-Through Cache Telemetry</span>
+    <span>Auto-refresh: 1s • TCP port: {{ port }}</span>
 </footer>
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>

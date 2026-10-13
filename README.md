@@ -147,10 +147,9 @@ python "Cache Benchmark/benchmark_script3.py"
 
 ## Current Limitations (from current code)
 
-- Cache server query path is read-focused and intended for benchmark-style read workloads.
-- Query result serialization currently returns the first row’s columns as a pipe-separated string.
-- Security hardening (auth/TLS/input policy) is not implemented.
-- Shell helper scripts are Linux/systemd specific.
+- Query result serialization formats all rows with pipe-separated columns and newline row delimiters.
+- Cache path enforces read-only query policy (SELECT/WITH) via application filters and PostgreSQL read_transaction.
+- Standard build via Makefile (`make`, `sudo make install`) or CMake.
 
 ## License
 

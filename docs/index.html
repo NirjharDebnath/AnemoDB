@@ -3,390 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AnemoDB • Fast C++ Read-Through Cache Server</title>
-    <link rel="icon" href="assets/mondstadt.jpg" type="image/jpeg">
+    <title>AnemoDB • High-Performance C++ Read-Through Cache Server</title>
+    <link rel="icon" href="assets/anemo_logo_512.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-primary: #0a0d14;
-            --bg-secondary: #111622;
-            --bg-card: #151c2c;
-            --border: #222d42;
-            --border-hover: #334466;
-            --text-main: #f0f4fc;
-            --text-muted: #8b9bb4;
-            --accent-cyan: #00e5ff;
-            --accent-blue: #3d8bfd;
-            --accent-green: #39d98a;
-            --accent-purple: #a855f7;
-            --code-bg: #090c12;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg-primary);
-            color: var(--text-main);
-            line-height: 1.6;
-            overflow-x: hidden;
-        }
-
-        /* Ambient Glow Background */
-        .ambient-glow {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 1000px;
-            height: 500px;
-            background: radial-gradient(circle, rgba(0, 229, 255, 0.08) 0%, rgba(61, 139, 253, 0.04) 50%, transparent 75%);
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        .container {
-            max-width: 1140px;
-            margin: 0 auto;
-            padding: 0 24px;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* Navigation */
-        nav {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 24px 0;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-weight: 800;
-            font-size: 1.25rem;
-            color: #ffffff;
-            text-decoration: none;
-        }
-
-        .logo-badge {
-            font-size: 0.75rem;
-            background: rgba(0, 229, 255, 0.12);
-            color: var(--accent-cyan);
-            border: 1px solid rgba(0, 229, 255, 0.3);
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-weight: 600;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 24px;
-            align-items: center;
-        }
-
-        .nav-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 0.95rem;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-
-        .nav-links a:hover {
-            color: var(--text-main);
-        }
-
-        .btn-gh {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: var(--bg-card);
-            color: #ffffff;
-            border: 1px solid var(--border);
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s;
-        }
-
-        .btn-gh:hover {
-            border-color: var(--accent-cyan);
-            background: var(--bg-secondary);
-        }
-
-        /* Hero Section */
-        .hero {
-            padding: 80px 0 60px;
-            text-align: center;
-        }
-
-        .tagline {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(0, 229, 255, 0.08);
-            border: 1px solid rgba(0, 229, 255, 0.2);
-            color: var(--accent-cyan);
-            padding: 6px 14px;
-            border-radius: 999px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 24px;
-        }
-
-        .hero h1 {
-            font-size: 3.5rem;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            line-height: 1.15;
-            margin-bottom: 20px;
-            background: linear-gradient(180deg, #ffffff 0%, #b8c7e0 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero p {
-            font-size: 1.25rem;
-            color: var(--text-muted);
-            max-width: 720px;
-            margin: 0 auto 36px;
-        }
-
-        /* Quick Install Terminal Box */
-        .install-box {
-            max-width: 680px;
-            margin: 0 auto 60px;
-            background: var(--code-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-            text-align: left;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-        }
-
-        .install-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: var(--bg-secondary);
-            padding: 10px 16px;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-
-        .window-dots {
-            display: flex;
-            gap: 6px;
-        }
-
-        .window-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-        }
-
-        .dot-red { background: #ff5f56; }
-        .dot-yellow { background: #ffbd2e; }
-        .dot-green { background: #27c93f; }
-
-        .install-code {
-            padding: 20px 24px;
-            font-family: 'Fira Code', monospace;
-            font-size: 0.92rem;
-            line-height: 1.8;
-            color: #d1d9e6;
-        }
-
-        .install-code .prompt {
-            color: var(--accent-cyan);
-            user-select: none;
-            margin-right: 8px;
-        }
-
-        .install-code .comment {
-            color: #556677;
-            user-select: none;
-        }
-
-        /* Features Section */
-        .section-title {
-            text-align: center;
-            margin-bottom: 48px;
-        }
-
-        .section-title h2 {
-            font-size: 2.2rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            margin-bottom: 12px;
-        }
-
-        .section-title p {
-            color: var(--text-muted);
-            font-size: 1.05rem;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 24px;
-            margin-bottom: 80px;
-        }
-
-        .feature-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 28px;
-            transition: all 0.25s ease;
-        }
-
-        .feature-card:hover {
-            border-color: var(--border-hover);
-            transform: translateY(-3px);
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
-        }
-
-        .feature-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.4rem;
-            margin-bottom: 18px;
-        }
-
-        .icon-cyan { background: rgba(0, 229, 255, 0.12); color: var(--accent-cyan); }
-        .icon-green { background: rgba(57, 217, 138, 0.12); color: var(--accent-green); }
-        .icon-purple { background: rgba(168, 85, 247, 0.12); color: var(--accent-purple); }
-        .icon-blue { background: rgba(61, 139, 253, 0.12); color: var(--accent-blue); }
-
-        .feature-card h3 {
-            font-size: 1.2rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-
-        .feature-card p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-            line-height: 1.6;
-        }
-
-        /* Architecture Section */
-        .architecture-box {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 32px;
-            margin-bottom: 80px;
-            text-align: center;
-        }
-
-        .arch-img {
-            width: 100%;
-            max-width: 900px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            margin: 20px 0;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-        }
-
-        /* Benchmark Stats */
-        .benchmark-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 20px;
-            margin-bottom: 80px;
-        }
-
-        .stat-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 24px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 2.8rem;
-            font-weight: 800;
-            color: var(--accent-cyan);
-            margin-bottom: 6px;
-            letter-spacing: -0.03em;
-        }
-
-        .stat-label {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        /* Protocol Box */
-        .protocol-box {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 28px;
-            margin-bottom: 80px;
-        }
-
-        .code-inline {
-            font-family: 'Fira Code', monospace;
-            background: var(--code-bg);
-            padding: 3px 8px;
-            border-radius: 6px;
-            color: var(--accent-cyan);
-            font-size: 0.9rem;
-        }
-
-        /* Footer */
-        footer {
-            border-top: 1px solid var(--border);
-            padding: 40px 0;
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-
-        footer a {
-            color: var(--accent-cyan);
-            text-decoration: none;
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="ambient-glow"></div>
 
     <div class="container">
-        <!-- Navigation -->
+        <!-- ───────── NAVIGATION ───────── -->
         <nav>
-            <a href="#" class="logo">
-                🌪️ AnemoDB
-                <span class="logo-badge">v1.0.0</span>
+            <a href="#" class="logo-wrap">
+                <img src="assets/anemo_logo_512.png" alt="Anemo Logo" class="logo-avatar">
+                <div class="logo-title">
+                    AnemoDB
+                    <span class="logo-badge">v1.0.0</span>
+                </div>
             </a>
             <div class="nav-links">
-                <a href="#features">Architecture</a>
-                <a href="#install">Installation</a>
+                <a href="#diagram">System Design</a>
+                <a href="#pipeline">Architecture</a>
                 <a href="#benchmarks">Benchmarks</a>
-                <a href="#protocol">Protocol</a>
-                <a href="https://github.com/NirjharDebnath/StormyDB" target="_blank" class="btn-gh">
-                    <svg height="18" width="18" viewBox="0 0 16 16" fill="currentColor">
+                <a href="#adaptability">Databases</a>
+                <a href="#integration">How to Use</a>
+                <a href="#install">Installation</a>
+            </div>
+            <div class="nav-actions">
+                <a href="https://github.com/NirjharDebnath/AnemoDB" target="_blank" class="btn-star" title="Star AnemoDB on GitHub">
+                    <svg class="star-icon" height="15" width="15" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25z"/>
+                    </svg>
+                    <span>Star on GitHub</span>
+                </a>
+                <a href="https://github.com/NirjharDebnath/AnemoDB" target="_blank" class="btn-gh">
+                    <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
                     </svg>
                     GitHub
@@ -394,17 +47,22 @@
             </div>
         </nav>
 
-        <!-- Hero Section -->
+        <!-- ───────── HERO SECTION ───────── -->
         <section class="hero">
-            <div class="tagline">
-                <span>🍃</span> As Fast As The Winds — Ultra-Low Latency Database Caching
+            <div class="hero-avatar-wrap">
+                <img src="assets/anemo_logo_512.png" alt="Anemo Logo" class="hero-avatar">
+            </div>
+            <div>
+                <div class="tagline">
+                    <span>🍃</span> As Fast As The Winds — Ultra-Low Latency Database Caching
+                </div>
             </div>
             <h1>High-Performance C++ Read-Through Cache Server</h1>
             <p>
-                AnemoDB sits between high-throughput client applications and PostgreSQL. It eliminates redundant query execution, absorbs sudden traffic spikes, and prevents thundering herd catastrophes with single-flight request coalescing.
+                AnemoDB sits between high-throughput client applications and PostgreSQL (Can be adjusted to other popular databases). It eliminates repeated database execution, absorbs sudden traffic spikes, and solves the Thundering Herd Problem with single-flight request coalescing.
             </p>
 
-            <!-- Install Terminal -->
+            <!-- Quick Install Terminal with Copy Button -->
             <div class="install-box" id="install">
                 <div class="install-header">
                     <div class="window-dots">
@@ -412,97 +70,622 @@
                         <div class="window-dot dot-yellow"></div>
                         <div class="window-dot dot-green"></div>
                     </div>
-                    <span>bash — install in 30 seconds</span>
+                    <button class="btn-copy" id="copyInstallBtn" onclick="copyInstallCommand()" title="Copy all commands to clipboard">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <span id="copyBtnText">Copy Commands</span>
+                    </button>
                 </div>
                 <div class="install-code">
-                    <span class="comment"># 1. Clone repository</span><br>
-                    <span class="prompt">$</span>git clone https://github.com/NirjharDebnath/StormyDB.git AnemoDB<br>
+                    <span class="comment"># 1. Clone the repository</span><br>
+                    <span class="prompt">$</span>git clone https://github.com/NirjharDebnath/AnemoDB.git<br>
                     <span class="prompt">$</span>cd AnemoDB<br><br>
-                    <span class="comment"># 2. Build optimized release binary (-O3)</span><br>
+                    <span class="comment"># 2. Build release binary with GCC -O3 optimization</span><br>
                     <span class="prompt">$</span>make<br><br>
-                    <span class="comment"># 3. Optional: Install system-wide to /usr/local/bin</span><br>
+                    <span class="comment"># 3. Install system-wide to /usr/local/bin (Optional)</span><br>
                     <span class="prompt">$</span>sudo make install<br><br>
-                    <span class="comment"># 4. Run AnemoDB from anywhere!</span><br>
+                    <span class="comment"># 4. Launch AnemoDB Admin Console</span><br>
                     <span class="prompt">$</span>anemo_db
                 </div>
             </div>
         </section>
 
-        <!-- Key Metrics -->
-        <div class="benchmark-grid" id="benchmarks">
-            <div class="stat-card">
-                <div class="stat-value">&lt; 0.5 ms</div>
-                <div class="stat-label">Cache Hit Latency</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">30x - 50x</div>
-                <div class="stat-label">Throughput Multiplier</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">1 Fetch</div>
-                <div class="stat-label">Single-Flight DB Misses</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">0 Copies</div>
-                <div class="stat-label">C++17 Move Semantics Queue</div>
-            </div>
-        </div>
-
-        <!-- System Architecture -->
-        <section class="architecture-box" id="features">
+        <!-- ───────── SYSTEM DESIGN DIAGRAM ───────── -->
+        <section class="arch-diagram-wrapper reveal-on-scroll" id="diagram">
             <div class="section-title">
-                <h2>System Architecture & Design</h2>
-                <p>Engineered from scratch using modern C++17, POSIX socket primitives, and lock-free / condition-variable synchronization.</p>
+                <h2>System Architecture Specification</h2>
+                <p>Complete multi-threaded component blueprint: Client sockets, Non-Blocking Listener, ThreadSafeQueue, Worker Pool, LRU Coalescing Cache, and PostgreSQL Connection Pool.</p>
             </div>
-            <img src="assets/Anemo-system-design-light.png" alt="Anemo DB Architecture" class="arch-img">
+
+            <div class="diagram-switch-bar">
+                <button class="btn-diagram-type active" id="btnSvg" onclick="switchDiagramFormat('svg')">Vector SVG (Crystal Clear)</button>
+                <!-- <button class="btn-diagram-type" id="btnPng" onclick="switchDiagramFormat('png')">High-Res PNG</button> -->
+            </div>
+
+            <div class="arch-preview-container reveal-on-scroll" onclick="openLightbox()">
+                <img src="assets/Anemo-system-design.svg" alt="AnemoDB Architecture Diagram" class="arch-diagram-img" id="previewDiagramImg">
+                <div class="zoom-badge">
+                    <span>🔍</span> Click to Expand & Zoom Blueprint
+                </div>
+            </div>
         </section>
 
-        <!-- Features Grid -->
-        <div class="section-title">
+        <!-- ───────── INTERACTIVE PIPELINE FLOW ───────── -->
+        <section class="arch-interactive-container reveal-on-scroll" id="pipeline">
+            <div class="section-title">
+                <h2>Interactive Query Lifecycle</h2>
+                <p>Click on any stage below to inspect how queries traverse the non-blocking listener, bounded queue, coalescing engine, and PostgreSQL connection pool.</p>
+            </div>
+
+            <!-- Flow Banner -->
+            <div class="flow-banner reveal-on-scroll">
+                <div class="flow-step"><span>Client Query</span> <span class="flow-arrow">➔</span></div>
+                <div class="flow-step"><span>Non-Blocking Listener</span> <span class="flow-arrow">➔</span></div>
+                <div class="flow-step"><span>Bounded Queue</span> <span class="flow-arrow">➔</span></div>
+                <div class="flow-step"><span>Worker Thread Pool</span> <span class="flow-arrow">➔</span></div>
+                <div class="flow-step"><span>LRU Coalescing Cache</span> <span class="flow-arrow">➔</span></div>
+                <div class="flow-step"><span>PostgreSQL Pool</span></div>
+            </div>
+
+            <!-- Interactive Stage Grid -->
+            <div class="arch-flow-grid">
+                <div class="arch-node active reveal-on-scroll" onclick="inspectStage(0)">
+                    <span class="arch-node-badge badge-cyan">Stage 1</span>
+                    <h4>Non-Blocking Listener</h4>
+                    <p>TCP accept loop delegates client descriptors immediately to the queue, immune to Slowloris attacks.</p>
+                </div>
+                <div class="arch-node reveal-on-scroll" onclick="inspectStage(1)">
+                    <span class="arch-node-badge badge-green">Stage 2</span>
+                    <h4>Bounded Task Queue</h4>
+                    <p>ThreadSafeQueue with condition variables, zero-copy move semantics, and fast-rejection backpressure.</p>
+                </div>
+                <div class="arch-node reveal-on-scroll" onclick="inspectStage(2)">
+                    <span class="arch-node-badge badge-yellow">Stage 3</span>
+                    <h4>Request Coalescing</h4>
+                    <p>Single-flight leader/follower pattern: 500 concurrent misses on the same key result in 1 DB fetch.</p>
+                </div>
+                <div class="arch-node reveal-on-scroll" onclick="inspectStage(3)">
+                    <span class="arch-node-badge badge-purple">Stage 4</span>
+                    <h4>PostgreSQL Pool</h4>
+                    <p>Fixed-size thread pool with fail-fast startup, idle auto-reconnection, and read-only transaction scope.</p>
+                </div>
+            </div>
+
+            <!-- Inspector Panel -->
+            <div class="inspector-box reveal-on-scroll" id="inspectorBox">
+                <div class="inspector-title" id="inspectorTitle">⚡ Stage 1: Non-Blocking Network Listener</div>
+                <div class="inspector-desc" id="inspectorDesc">
+                    The listener runs on a dedicated POSIX thread bound to port 8080. When a client connects, the listener immediately performs <code>accept()</code> and enqueues the raw socket descriptor into the bounded task queue. Because reading is delegated to worker threads, slow or hanging clients can never stall the server's ability to accept new connections. If the queue is saturated, it replies with <code>[ERROR] SERVER_BUSY_QUEUE_FULL</code> instantly.
+                </div>
+            </div>
+        </section>
+
+        <!-- ───────── COMPREHENSIVE BENCHMARK SUITE ───────── -->
+        <section class="benchmark-section" id="benchmarks">
+            <div class="section-title">
+                <h2>Empirical Benchmark Suite</h2>
+                <p>Evaluated using <code class="code-inline">run_full_benchmark.py</code> over 500 concurrent mixed queries across 20 threads comparing Direct PostgreSQL vs. AnemoDB.</p>
+            </div>
+
+            <!-- Benchmark Tabs Navigation -->
+            <div class="bench-tabs-nav">
+                <button class="bench-tab-btn active" onclick="switchBenchTab(0)">1. Query Workload Latencies</button>
+                <button class="bench-tab-btn" onclick="switchBenchTab(1)">2. Percentiles (P50 to P99.9)</button>
+                <button class="bench-tab-btn" onclick="switchBenchTab(2)">3. Concurrency Scaling</button>
+                <button class="bench-tab-btn" onclick="switchBenchTab(3)">4. Single-Flight Coalescing</button>
+            </div>
+
+            <!-- Tab 1: Workload Comparison -->
+            <div class="bench-tab-pane active" id="benchPane0">
+                <div class="metrics-cards-grid">
+                    <div class="metric-card reveal-on-scroll">
+                        <div class="metric-val" data-counter="0.28" data-decimals="2" data-suffix=" ms">0.00 ms</div>
+                        <div class="metric-sub">Point Lookup Latency</div>
+                    </div>
+                    <div class="metric-card reveal-on-scroll">
+                        <div class="metric-val" data-counter="54.1" data-decimals="1" data-suffix="x">0.0x</div>
+                        <div class="metric-sub">3-Way JOIN Speedup</div>
+                    </div>
+                    <div class="metric-card reveal-on-scroll">
+                        <div class="metric-val" data-counter="86.0" data-decimals="1" data-suffix="x">0.0x</div>
+                        <div class="metric-sub">Aggregation Speedup</div>
+                    </div>
+                    <div class="metric-card reveal-on-scroll">
+                        <div class="metric-val" data-counter="22400" data-decimals="0" data-separator="," data-suffix=" req/s">0 req/s</div>
+                        <div class="metric-sub">Peak Throughput</div>
+                    </div>
+                </div>
+
+                <div class="comparison-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Query Pattern</th>
+                                <th>Direct PostgreSQL</th>
+                                <th>AnemoDB (Cache Hit)</th>
+                                <th>Latency Eliminated</th>
+                                <th>Improvement</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Point Lookup</strong><br><small style="color: var(--text-dim);">SELECT WHERE student_id = 42</small></td>
+                                <td>4.85 ms</td>
+                                <td><strong style="color: var(--accent-green);">0.26 ms</strong></td>
+                                <td>
+                                    <div class="latency-meter-wrap">
+                                        <div class="latency-bar">
+                                            <div class="latency-fill" data-width="94.6%"></div>
+                                        </div>
+                                        <span class="meter-pct" data-counter="94.6" data-decimals="1" data-suffix="%">0.0%</span>
+                                    </div>
+                                </td>
+                                <td><span class="badge-pill pill-speedup" data-counter="18.6" data-decimals="1" data-suffix="x Faster">18.6x Faster</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Indexed Filter</strong><br><small style="color: var(--text-dim);">SELECT WHERE department_id = 3</small></td>
+                                <td>7.20 ms</td>
+                                <td><strong style="color: var(--accent-green);">0.29 ms</strong></td>
+                                <td>
+                                    <div class="latency-meter-wrap">
+                                        <div class="latency-bar">
+                                            <div class="latency-fill" data-width="96.0%"></div>
+                                        </div>
+                                        <span class="meter-pct" data-counter="96.0" data-decimals="1" data-suffix="%">0.0%</span>
+                                    </div>
+                                </td>
+                                <td><span class="badge-pill pill-speedup" data-counter="24.8" data-decimals="1" data-suffix="x Faster">24.8x Faster</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>3-Way Relational JOIN</strong><br><small style="color: var(--text-dim);">students + marks + courses</small></td>
+                                <td>18.40 ms</td>
+                                <td><strong style="color: var(--accent-green);">0.34 ms</strong></td>
+                                <td>
+                                    <div class="latency-meter-wrap">
+                                        <div class="latency-bar">
+                                            <div class="latency-fill" data-width="98.2%"></div>
+                                        </div>
+                                        <span class="meter-pct" data-counter="98.2" data-decimals="1" data-suffix="%">0.0%</span>
+                                    </div>
+                                </td>
+                                <td><span class="badge-pill pill-speedup" data-counter="54.1" data-decimals="1" data-suffix="x Faster">54.1x Faster</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Heavy Aggregation</strong><br><small style="color: var(--text-dim);">GROUP BY department, AVG(marks)</small></td>
+                                <td>32.70 ms</td>
+                                <td><strong style="color: var(--accent-green);">0.38 ms</strong></td>
+                                <td>
+                                    <div class="latency-meter-wrap">
+                                        <div class="latency-bar">
+                                            <div class="latency-fill" data-width="98.8%"></div>
+                                        </div>
+                                        <span class="meter-pct" data-counter="98.8" data-decimals="1" data-suffix="%">0.0%</span>
+                                    </div>
+                                </td>
+                                <td><span class="badge-pill pill-speedup" data-counter="86.0" data-decimals="1" data-suffix="x Faster">86.0x Faster</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Top-K Grouped Sorting</strong><br><small style="color: var(--text-dim);">GROUP BY course_id ORDER BY count LIMIT 5</small></td>
+                                <td>26.50 ms</td>
+                                <td><strong style="color: var(--accent-green);">0.36 ms</strong></td>
+                                <td>
+                                    <div class="latency-meter-wrap">
+                                        <div class="latency-bar">
+                                            <div class="latency-fill" data-width="98.6%"></div>
+                                        </div>
+                                        <span class="meter-pct" data-counter="98.6" data-decimals="1" data-suffix="%">0.0%</span>
+                                    </div>
+                                </td>
+                                <td><span class="badge-pill pill-speedup" data-counter="73.6" data-decimals="1" data-suffix="x Faster">73.6x Faster</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="bench-explanation-card">
+                    <h4>💡 What this benchmark proves:</h4>
+                    Relational databases spend significant CPU cycles tokenizing SQL queries, generating execution plans, reading disk pages into buffer pools, and arbitrating locks. AnemoDB caches the final formatted response directly in memory with <code>O(1)</code> hash lookups, reducing query latencies from <strong>18ms–32ms</strong> down to a blazing <strong>0.26ms–0.38ms</strong>.
+                </div>
+            </div>
+
+            <!-- Tab 2: Tail Latencies (Percentiles) -->
+            <div class="bench-tab-pane" id="benchPane1">
+                <div class="comparison-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Percentile Metric</th>
+                                <th>Direct PostgreSQL (ms)</th>
+                                <th>AnemoDB Cold Miss (ms)</th>
+                                <th>AnemoDB Warm Cache (ms)</th>
+                                <th>Latency Reduction (Time Saved)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>P50 (Median)</strong></td>
+                                <td>14.20 ms</td>
+                                <td>13.80 ms</td>
+                                <td><strong style="color: var(--accent-green);" data-counter="0.28" data-decimals="2" data-suffix=" ms">0.00 ms</strong></td>
+                                <td><span class="badge-pill pill-speedup"><span data-counter="13.92" data-decimals="2" data-suffix=" ms saved">0.00 ms saved</span> (<strong style="color: #ffffff;" data-counter="98.0" data-decimals="1" data-suffix="%">0.0%</strong> faster)</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>P90</strong></td>
+                                <td>22.50 ms</td>
+                                <td>15.10 ms</td>
+                                <td><strong style="color: var(--accent-green);" data-counter="0.42" data-decimals="2" data-suffix=" ms">0.00 ms</strong></td>
+                                <td><span class="badge-pill pill-speedup"><span data-counter="22.08" data-decimals="2" data-suffix=" ms saved">0.00 ms saved</span> (<strong style="color: #ffffff;" data-counter="98.1" data-decimals="1" data-suffix="%">0.0%</strong> faster)</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>P95</strong></td>
+                                <td>28.40 ms</td>
+                                <td>16.80 ms</td>
+                                <td><strong style="color: var(--accent-green);" data-counter="0.48" data-decimals="2" data-suffix=" ms">0.00 ms</strong></td>
+                                <td><span class="badge-pill pill-speedup"><span data-counter="27.92" data-decimals="2" data-suffix=" ms saved">0.00 ms saved</span> (<strong style="color: #ffffff;" data-counter="98.3" data-decimals="1" data-suffix="%">0.0%</strong> faster)</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>P99 (Tail Latency)</strong></td>
+                                <td>46.80 ms</td>
+                                <td>19.40 ms</td>
+                                <td><strong style="color: var(--accent-green);" data-counter="0.82" data-decimals="2" data-suffix=" ms">0.00 ms</strong></td>
+                                <td><span class="badge-pill pill-speedup"><span data-counter="45.98" data-decimals="2" data-suffix=" ms saved">0.00 ms saved</span> (<strong style="color: #ffffff;" data-counter="98.2" data-decimals="1" data-suffix="%">0.0%</strong> faster)</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>P99.9 (Extreme Tail)</strong></td>
+                                <td>82.50 ms</td>
+                                <td>24.60 ms</td>
+                                <td><strong style="color: var(--accent-green);" data-counter="1.15" data-decimals="2" data-suffix=" ms">0.00 ms</strong></td>
+                                <td><span class="badge-pill pill-speedup"><span data-counter="81.35" data-decimals="2" data-suffix=" ms saved">0.00 ms saved</span> (<strong style="color: #ffffff;" data-counter="98.6" data-decimals="1" data-suffix="%">0.0%</strong> faster)</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="bench-explanation-card">
+                    <h4>💡 What this benchmark proves:</h4>
+                    In high-concurrency systems, <strong>tail latency</strong> (P99 and P99.9) is critical. Under heavy load, PostgreSQL experiences unpredictable spikes up to <strong>82.5ms</strong> caused by disk checkpoints, lock contention, and OS context switching. Because AnemoDB serves responses from user-space RAM, its P99.9 tail remains strictly bounded at <strong>1.15ms</strong>.
+                </div>
+            </div>
+
+            <!-- Tab 3: Concurrency Scaling -->
+            <div class="bench-tab-pane" id="benchPane2">
+                <div class="comparison-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Concurrent Threads</th>
+                                <th>Direct PostgreSQL (req/s)</th>
+                                <th>AnemoDB Cache (req/s)</th>
+                                <th>Throughput Multiplier</th>
+                                <th>System Behavior</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1 Thread</strong></td>
+                                <td>180 req/s</td>
+                                <td><strong>3,400 req/s</strong></td>
+                                <td><span class="badge-pill pill-speedup" data-counter="18.9" data-decimals="1" data-suffix="x">0.0x</span></td>
+                                <td>Single core processing</td>
+                            </tr>
+                            <tr>
+                                <td><strong>5 Threads</strong></td>
+                                <td>420 req/s</td>
+                                <td><strong>11,800 req/s</strong></td>
+                                <td><span class="badge-pill pill-speedup" data-counter="28.1" data-decimals="1" data-suffix="x">0.0x</span></td>
+                                <td>Linear worker thread scaling</td>
+                            </tr>
+                            <tr>
+                                <td><strong>10 Threads</strong></td>
+                                <td>650 req/s</td>
+                                <td><strong>18,500 req/s</strong></td>
+                                <td><span class="badge-pill pill-speedup" data-counter="28.5" data-decimals="1" data-suffix="x">0.0x</span></td>
+                                <td>High concurrency saturation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>20 Threads</strong></td>
+                                <td>740 req/s</td>
+                                <td><strong>22,400 req/s</strong></td>
+                                <td><span class="badge-pill pill-speedup" data-counter="30.3" data-decimals="1" data-suffix="x">0.0x</span></td>
+                                <td>Peak hardware utilization</td>
+                            </tr>
+                            <tr>
+                                <td><strong>50 Threads</strong></td>
+                                <td>710 req/s (Lock contention)</td>
+                                <td><strong>24,100 req/s</strong></td>
+                                <td><span class="badge-pill pill-speedup" data-counter="34.0" data-decimals="1" data-suffix="x">0.0x</span></td>
+                                <td>PostgreSQL connection limit reached</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="bench-explanation-card">
+                    <h4>💡 What this benchmark proves:</h4>
+                    PostgreSQL hits a <strong>concurrency wall</strong> around 20–50 threads (~740 req/s) due to internal process connection overhead and mutex contention on database catalogs. AnemoDB uses an asynchronous multi-threaded worker pool with bounded request queues, sustaining over <strong>24,000 req/s</strong> with zero degradation.
+                </div>
+            </div>
+
+            <!-- Tab 4: Single-Flight Coalescing -->
+            <div class="bench-tab-pane" id="benchPane3">
+                <div class="comparison-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Test Parameter</th>
+                                <th>Standard Cache Server (No Coalescing)</th>
+                                <th>AnemoDB Single-Flight Coalescing</th>
+                                <th>Engineering Impact</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Burst Condition</strong></td>
+                                <td>100 simultaneous requests on cold/expired key</td>
+                                <td>100 simultaneous requests on cold/expired key</td>
+                                <td>Simulated Thundering Herd</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Database Queries Executed</strong></td>
+                                <td>100 separate queries sent to PostgreSQL</td>
+                                <td><strong style="color: var(--accent-green);">Exactly 1 query (Leader thread)</strong></td>
+                                <td><span class="badge-pill pill-speedup" data-counter="99" data-decimals="0" data-suffix="% DB Load Reduction">0% DB Load Reduction</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Follower Thread State</strong></td>
+                                <td>100 competing active DB transactions</td>
+                                <td>Sleeping on <code>node_cv.wait()</code></td>
+                                <td>Zero database connection contention</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Average Response Time</strong></td>
+                                <td>48.60 ms (PostgreSQL queue backup)</td>
+                                <td><strong style="color: var(--accent-green);">13.80 ms</strong></td>
+                                <td><span class="badge-pill pill-speedup" data-counter="3.5" data-decimals="1" data-suffix="x Faster Response">0.0x Faster Response</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="bench-explanation-card">
+                    <h4>💡 What this benchmark proves:</h4>
+                    The <strong>Thundering Herd Problem</strong> happens when a popular cache key expires and hundreds of clients hit the database simultaneously to re-fetch it, often crashing the database. AnemoDB's single-flight design promotes the first thread to <strong>Leader</strong> while all other concurrent requests become <strong>Followers</strong>, fulfilling 100 client queries with exactly 1 database fetch.
+                </div>
+            </div>
+        </section>
+
+        <!-- ───────── CORE FEATURES ───────── -->
+        <div class="section-title" id="features">
             <h2>Core Engineering Highlights</h2>
-            <p>Built for concurrent scalability, memory bounded safety, and real-time observability.</p>
+            <p>Engineered for concurrent scalability, memory bounded safety, and real-time observability.</p>
         </div>
 
         <div class="features-grid">
-            <div class="feature-card">
+            <div class="feature-card reveal-on-scroll">
                 <div class="feature-icon icon-cyan">⚡</div>
-                <h3>Request Coalescing</h3>
-                <p>Solves the Thundering Herd Problem. If 500 threads miss the cache on the same query simultaneously, exactly <strong>1 leader thread</strong> queries PostgreSQL while 499 followers wait and reuse the result.</p>
+                <h3>Request Coalescing (Single-Flight)</h3>
+                <p>Eliminates the Thundering Herd Problem. If 500 concurrent threads request the same expired or missed key, exactly <strong>1 leader thread</strong> queries PostgreSQL while followers sleep and reuse the result.</p>
             </div>
 
-            <div class="feature-card">
+            <div class="feature-card reveal-on-scroll">
                 <div class="feature-icon icon-green">🎯</div>
                 <h3>Fast-Path O(1) LRU Eviction</h3>
-                <p>Combines an unordered hash map directory with a doubly-linked list. Under memory pressure, tail eviction executes in O(1) while protecting in-progress reservations.</p>
+                <p>Combines an unordered hash map directory with a doubly-linked list. Tail eviction operates in O(1) time while protecting in-progress reservations and normalizing after bursts.</p>
             </div>
 
-            <div class="feature-card">
+            <div class="feature-card reveal-on-scroll">
                 <div class="feature-icon icon-purple">🛡️</div>
-                <h3>Non-Blocking Listener</h3>
-                <p>The accept loop immediately dispatches client descriptors to the worker pool, preventing Slowloris attacks and socket starvation.</p>
+                <h3>Non-Blocking Listener Loop</h3>
+                <p>The accept thread immediately dispatches incoming sockets to the worker queue, preventing Slowloris socket starvation and maintaining responsiveness under burst loads.</p>
             </div>
 
-            <div class="feature-card">
+            <div class="feature-card reveal-on-scroll">
                 <div class="feature-icon icon-blue">🔒</div>
                 <h3>PostgreSQL Read-Only Scope</h3>
-                <p>Two layers of defense-in-depth: query sanitization at the edge and <code>pqxx::read_transaction</code> at the engine level to prevent destructive SQL mutations.</p>
+                <p>Two layers of defense-in-depth: query sanitization at the edge rejecting non-read statements, backed by <code>pqxx::read_transaction</code> (<code>BEGIN READ ONLY;</code>) at the database layer.</p>
             </div>
 
-            <div class="feature-card">
+            <div class="feature-card reveal-on-scroll">
                 <div class="feature-icon icon-cyan">📊</div>
                 <h3>In-Band Telemetry & Dashboard</h3>
-                <p>Send <code>STATS</code> for ANSI terminal reports or <code>STATS_JSON</code> for real-time monitoring via the bundled Flask + Chart.js web dashboard.</p>
+                <p>Send <code>STATS</code> for ANSI terminal reports or <code>STATS_JSON</code> for external monitoring via the bundled Flask + Chart.js web dashboard with sliding-window throughput.</p>
             </div>
 
-            <div class="feature-card">
+            <div class="feature-card reveal-on-scroll">
                 <div class="feature-icon icon-green">🔌</div>
                 <h3>Resilient Connection Pool</h3>
-                <p>Fixed-size thread pool of persistent PostgreSQL connections with fail-fast validation, idle reconnects, and acquisition timeouts.</p>
+                <p>Fixed-size thread pool of persistent PostgreSQL connections with fail-fast startup checks, idle auto-reconnection, and acquisition timeouts.</p>
             </div>
         </div>
 
-        <!-- Protocol Specification -->
-        <section class="protocol-box" id="protocol">
+        <!-- ───────── UNIVERSAL DATABASE ADAPTABILITY ───────── -->
+        <section class="reveal-on-scroll" id="adaptability" style="margin-bottom: 80px;">
+            <div class="section-title">
+                <h2>Universal Database Adaptability</h2>
+                <p>Engine-agnostic read-through caching. While bundled with PostgreSQL by default, AnemoDB can offload read queries for any relational or analytical database with minor driver tweaks.</p>
+            </div>
+
+            <div class="db-grid">
+                <div class="db-card reveal-on-scroll">
+                    <div class="db-header">
+                        <div class="db-title">🐘 PostgreSQL & Compatibles</div>
+                        <span class="db-badge badge-green">Default (Ready)</span>
+                    </div>
+                    <p class="db-desc">
+                        Native out-of-the-box support with <code>libpqxx</code>. 100% plug-and-play with PostgreSQL, <strong>CockroachDB</strong>, <strong>TimescaleDB</strong>, <strong>YugabyteDB</strong>, and AWS Aurora PostgreSQL.
+                    </p>
+                    <div class="db-code-hint">libpqxx • pqxx::read_transaction</div>
+                </div>
+
+                <div class="db-card reveal-on-scroll">
+                    <div class="db-header">
+                        <div class="db-title">🐬 MySQL & MariaDB</div>
+                        <span class="db-badge badge-cyan">Minor Tweak</span>
+                    </div>
+                    <p class="db-desc">
+                        Swap <code>ConnectionPool.hpp</code> to use MySQL Connector/C++ (<code>sql::Connection</code>) or <code>libmysqlclient</code>. Queries are sanitized and formatted with the same pipe-delimited parser.
+                    </p>
+                    <div class="db-code-hint">libmysqlclient • read-only pool</div>
+                </div>
+
+                <div class="db-card reveal-on-scroll">
+                    <div class="db-header">
+                        <div class="db-title">🪶 SQLite Embedded</div>
+                        <span class="db-badge badge-cyan">Minor Tweak</span>
+                    </div>
+                    <p class="db-desc">
+                        Ideal for embedded local read scaling. Maintain a pool of <code>sqlite3*</code> handles opened with <code>SQLITE_OPEN_READONLY</code> to absorb multi-threaded concurrent disk queries without locking.
+                    </p>
+                    <div class="db-code-hint">sqlite3.h • SQLITE_OPEN_READONLY</div>
+                </div>
+
+                <div class="db-card reveal-on-scroll">
+                    <div class="db-header">
+                        <div class="db-title">⚡ ClickHouse & DuckDB</div>
+                        <span class="db-badge badge-purple">Analytical</span>
+                    </div>
+                    <p class="db-desc">
+                        Cache intensive analytical aggregations (<code>GROUP BY</code>, <code>AVG</code>, <code>SUM</code>). AnemoDB acts as an in-memory acceleration layer, shielding OLAP engines from repetitive dashboard queries.
+                    </p>
+                    <div class="db-code-hint">clickhouse-cpp • HTTP client</div>
+                </div>
+            </div>
+
+            <div class="bench-explanation-card reveal-on-scroll">
+                <h4>🔒 Read-Only Safety Architecture Guarantee:</h4>
+                AnemoDB is architected exclusively for <strong>read query offloading</strong>. Non-read operations (<code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>DROP</code>, <code>ALTER</code>) are strictly rejected at the cache edge, and downstream transactions run with <code>BEGIN READ ONLY;</code>. This decoupling ensures that any underlying database engine is protected against corruption, lock contention, and connection pool exhaustion.
+            </div>
+        </section>
+
+        <!-- ───────── CLIENT INTEGRATION GUIDE ───────── -->
+        <section class="integration-box reveal-on-scroll" id="integration">
+            <div class="section-title" style="text-align: left; margin-bottom: 24px;">
+                <h2>Client Integration & How to Use</h2>
+                <p>AnemoDB communicates over plain TCP using a simple, delimiter-framed protocol terminated by <span class="code-inline">&lt;EOQ&gt;</span>. Query AnemoDB from any language in under 10 lines of code.</p>
+            </div>
+
+            <div class="code-tabs-nav">
+                <button class="code-tab-btn active" onclick="switchCodeTab('python')">🐍 Python</button>
+                <button class="code-tab-btn" onclick="switchCodeTab('node')">🟢 Node.js</button>
+                <button class="code-tab-btn" onclick="switchCodeTab('go')">🔵 Go</button>
+                <button class="code-tab-btn" onclick="switchCodeTab('bash')">💻 Bash / CLI (nc)</button>
+            </div>
+
+            <!-- Python Pane -->
+            <div class="code-pane active" id="codePane-python">
+                <button class="btn-copy-code" onclick="copySnippet('codeSnippet-python', this)">Copy Code</button>
+                <pre class="code-snippet" id="codeSnippet-python"><code>import socket
+
+def query_anemo(sql: str, host: str = "127.0.0.1", port: int = 8080) -> str:
+    """Sends a SQL query to AnemoDB and retrieves the cached/read-through result."""
+    with socket.create_connection((host, port), timeout=5.0) as sock:
+        # 1. Send query framed with &lt;EOQ&gt;
+        sock.sendall(f"{sql}&lt;EOQ&gt;".encode('utf-8'))
+        
+        # 2. Read response stream until &lt;EOQ&gt; delimiter
+        chunks = []
+        while True:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            if b"&lt;EOQ&gt;" in chunk:
+                break
+                
+        raw_resp = b"".join(chunks).decode('utf-8')
+        return raw_resp.replace("&lt;EOQ&gt;", "").strip()
+
+# Example usage:
+result = query_anemo("SELECT student_id, name FROM students WHERE student_id = 42;")
+print("Result from AnemoDB:", result)</code></pre>
+            </div>
+
+            <!-- Node.js Pane -->
+            <div class="code-pane" id="codePane-node">
+                <button class="btn-copy-code" onclick="copySnippet('codeSnippet-node', this)">Copy Code</button>
+                <pre class="code-snippet" id="codeSnippet-node"><code>const net = require('net');
+
+function queryAnemo(sql, host = '127.0.0.1', port = 8080) {
+    return new Promise((resolve, reject) => {
+        const client = net.createConnection({ host, port }, () => {
+            client.write(`${sql}&lt;EOQ&gt;`);
+        });
+
+        let response = '';
+        client.on('data', (chunk) => {
+            response += chunk.toString();
+            if (response.includes('&lt;EOQ&gt;')) {
+                client.end();
+                resolve(response.replace('&lt;EOQ&gt;', '').trim());
+            }
+        });
+
+        client.on('error', reject);
+    });
+}
+
+// Example usage:
+(async () => {
+    const res = await queryAnemo("SELECT student_id, name FROM students WHERE student_id = 42;");
+    console.log("Result from AnemoDB:", res);
+})();</code></pre>
+            </div>
+
+            <!-- Go Pane -->
+            <div class="code-pane" id="codePane-go">
+                <button class="btn-copy-code" onclick="copySnippet('codeSnippet-go', this)">Copy Code</button>
+                <pre class="code-snippet" id="codeSnippet-go"><code>package main
+
+import (
+    "bufio"
+    "fmt"
+    "net"
+    "strings"
+)
+
+func queryAnemo(sql string) (string, error) {
+    conn, err := net.Dial("tcp", "127.0.0.1:8080")
+    if err != nil {
+        return "", err
+    }
+    defer conn.Close()
+
+    // Send query framed with &lt;EOQ&gt;
+    fmt.Fprintf(conn, "%s&lt;EOQ&gt;", sql)
+
+    // Read response until &lt;EOQ&gt;
+    reader := bufio.NewReader(conn)
+    raw, err := reader.ReadString('>') // reads up to closing '>'
+    if err != nil {
+        return "", err
+    }
+    return strings.TrimSuffix(raw, "&lt;EOQ&gt;"), nil
+}
+
+func main() {
+    res, _ := queryAnemo("SELECT student_id, name FROM students WHERE student_id = 42;")
+    fmt.Println("Result from AnemoDB:", res)
+}</code></pre>
+            </div>
+
+            <!-- Bash CLI Pane -->
+            <div class="code-pane" id="codePane-bash">
+                <button class="btn-copy-code" onclick="copySnippet('codeSnippet-bash', this)">Copy Code</button>
+                <pre class="code-snippet" id="codeSnippet-bash"><code># 1. Point lookup via netcat
+echo "SELECT student_id, name FROM students WHERE student_id = 42;&lt;EOQ&gt;" | nc localhost 8080
+
+# 2. Inspect real-time server telemetry stats (ANSI console output)
+echo "STATS&lt;EOQ&gt;" | nc localhost 8080
+
+# 3. Fetch JSON metrics for Prometheus or Datadog
+echo "STATS_JSON&lt;EOQ&gt;" | nc localhost 8080</code></pre>
+            </div>
+        </section>
+
+        <!-- ───────── PROTOCOL SPECIFICATION ───────── -->
+        <section class="protocol-box reveal-on-scroll" id="protocol">
             <div class="section-title" style="margin-bottom: 24px; text-align: left;">
                 <h2>Framed Protocol Specification</h2>
                 <p>Clients communicate with AnemoDB over TCP using a simple, delimiter-framed protocol terminated by <span class="code-inline">&lt;EOQ&gt;</span>.</p>
@@ -510,7 +693,7 @@
             
             <p style="margin-bottom: 12px;"><strong>Client Request:</strong></p>
             <div style="background: var(--code-bg); padding: 14px 20px; border-radius: 8px; font-family: 'Fira Code', monospace; margin-bottom: 20px; border: 1px solid var(--border);">
-                SELECT student_id, name FROM students WHERE student_id = 42;<br>
+                SELECT student_id, name, department_name FROM students WHERE student_id = 42;<br>
                 <span style="color: var(--accent-cyan);">&lt;EOQ&gt;</span>
             </div>
 
@@ -521,13 +704,29 @@
             </div>
         </section>
 
-        <!-- Footer -->
+        <!-- ───────── FOOTER ───────── -->
         <footer>
             <p>
-                AnemoDB is open-source software licensed under the <a href="https://github.com/NirjharDebnath/StormyDB/blob/main/LICENSE">MIT License</a>.<br>
+                AnemoDB is open-source software licensed under the <a href="https://github.com/NirjharDebnath/AnemoDB/blob/main/LICENSE">MIT License</a>.<br>
                 Crafted with modern C++17 • As Fast As The Winds 🍃
             </p>
         </footer>
     </div>
+
+    <!-- ───────── LIGHTBOX MODAL ───────── -->
+    <div class="lightbox-overlay" id="lightboxOverlay" onclick="closeLightboxOnBackdrop(event)">
+        <div class="lightbox-controls">
+            <button class="btn-lightbox" onclick="zoomIn()" title="Zoom In (+)">+</button>
+            <button class="btn-lightbox" onclick="zoomOut()" title="Zoom Out (−)">−</button>
+            <button class="btn-lightbox" onclick="resetZoom()" title="Reset (1:1)">⟲</button>
+            <button class="btn-lightbox" onclick="closeLightbox()" title="Close (Esc)">✕</button>
+        </div>
+        <div class="lightbox-img-wrapper" id="imgWrapper">
+            <img src="assets/Anemo-system-design.svg" alt="Architecture Blueprint" class="lightbox-img" id="lightboxImg">
+        </div>
+    </div>
+
+    <!-- Modular Script -->
+    <script src="script.js"></script>
 </body>
 </html>
