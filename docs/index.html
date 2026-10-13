@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnemoDB • Fast C++ Read-Through Cache Server</title>
+    <link rel="icon" href="assets/mondstadt.jpg" type="image/jpeg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0d14;
+            --bg-secondary: #111622;
+            --bg-card: #151c2c;
+            --border: #222d42;
+            --border-hover: #334466;
+            --text-main: #f0f4fc;
+            --text-muted: #8b9bb4;
+            --accent-cyan: #00e5ff;
+            --accent-blue: #3d8bfd;
+            --accent-green: #39d98a;
+            --accent-purple: #a855f7;
+            --code-bg: #090c12;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Ambient Glow Background */
+        .ambient-glow {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 1000px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(0, 229, 255, 0.08) 0%, rgba(61, 139, 253, 0.04) 50%, transparent 75%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 1140px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 24px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .logo-badge {
+            font-size: 0.75rem;
+            background: rgba(0, 229, 255, 0.12);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-weight: 600;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-main);
+        }
+
+        .btn-gh {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-card);
+            color: #ffffff;
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-gh:hover {
+            border-color: var(--accent-cyan);
+            background: var(--bg-secondary);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 80px 0 60px;
+            text-align: center;
+        }
+
+        .tagline {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 229, 255, 0.08);
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            color: var(--accent-cyan);
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+            margin-bottom: 20px;
+            background: linear-gradient(180deg, #ffffff 0%, #b8c7e0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 720px;
+            margin: 0 auto 36px;
+        }
+
+        /* Quick Install Terminal Box */
+        .install-box {
+            max-width: 680px;
+            margin: 0 auto 60px;
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            text-align: left;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .install-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-secondary);
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .window-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .window-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background: #ff5f56; }
+        .dot-yellow { background: #ffbd2e; }
+        .dot-green { background: #27c93f; }
+
+        .install-code {
+            padding: 20px 24px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.92rem;
+            line-height: 1.8;
+            color: #d1d9e6;
+        }
+
+        .install-code .prompt {
+            color: var(--accent-cyan);
+            user-select: none;
+            margin-right: 8px;
+        }
+
+        .install-code .comment {
+            color: #556677;
+            user-select: none;
+        }
+
+        /* Features Section */
+        .section-title {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .section-title h2 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+        }
+
+        .section-title p {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 80px;
+        }
+
+        .feature-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+            transition: all 0.25s ease;
+        }
+
+        .feature-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            margin-bottom: 18px;
+        }
+
+        .icon-cyan { background: rgba(0, 229, 255, 0.12); color: var(--accent-cyan); }
+        .icon-green { background: rgba(57, 217, 138, 0.12); color: var(--accent-green); }
+        .icon-purple { background: rgba(168, 85, 247, 0.12); color: var(--accent-purple); }
+        .icon-blue { background: rgba(61, 139, 253, 0.12); color: var(--accent-blue); }
+
+        .feature-card h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Architecture Section */
+        .architecture-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 80px;
+            text-align: center;
+        }
+
+        .arch-img {
+            width: 100%;
+            max-width: 900px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            margin: 20px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+
+        /* Benchmark Stats */
+        .benchmark-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 80px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: var(--accent-cyan);
+            margin-bottom: 6px;
+            letter-spacing: -0.03em;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Protocol Box */
+        .protocol-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+            margin-bottom: 80px;
+        }
+
+        .code-inline {
+            font-family: 'Fira Code', monospace;
+            background: var(--code-bg);
+            padding: 3px 8px;
+            border-radius: 6px;
+            color: var(--accent-cyan);
+            font-size: 0.9rem;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 40px 0;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-glow"></div>
+
+    <div class="container">
+        <!-- Navigation -->
+        <nav>
+            <a href="#" class="logo">
+                🌪️ AnemoDB
+                <span class="logo-badge">v1.0.0</span>
+            </a>
+            <div class="nav-links">
+                <a href="#features">Architecture</a>
+                <a href="#install">Installation</a>
+                <a href="#benchmarks">Benchmarks</a>
+                <a href="#protocol">Protocol</a>
+                <a href="https://github.com/NirjharDebnath/StormyDB" target="_blank" class="btn-gh">
+                    <svg height="18" width="18" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                    </svg>
+                    GitHub
+                </a>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="tagline">
+                <span>🍃</span> As Fast As The Winds — Ultra-Low Latency Database Caching
+            </div>
+            <h1>High-Performance C++ Read-Through Cache Server</h1>
+            <p>
+                AnemoDB sits between high-throughput client applications and PostgreSQL. It eliminates redundant query execution, absorbs sudden traffic spikes, and prevents thundering herd catastrophes with single-flight request coalescing.
+            </p>
+
+            <!-- Install Terminal -->
+            <div class="install-box" id="install">
+                <div class="install-header">
+                    <div class="window-dots">
+                        <div class="window-dot dot-red"></div>
+                        <div class="window-dot dot-yellow"></div>
+                        <div class="window-dot dot-green"></div>
+                    </div>
+                    <span>bash — install in 30 seconds</span>
+                </div>
+                <div class="install-code">
+                    <span class="comment"># 1. Clone repository</span><br>
+                    <span class="prompt">$</span>git clone https://github.com/NirjharDebnath/StormyDB.git AnemoDB<br>
+                    <span class="prompt">$</span>cd AnemoDB<br><br>
+                    <span class="comment"># 2. Build optimized release binary (-O3)</span><br>
+                    <span class="prompt">$</span>make<br><br>
+                    <span class="comment"># 3. Optional: Install system-wide to /usr/local/bin</span><br>
+                    <span class="prompt">$</span>sudo make install<br><br>
+                    <span class="comment"># 4. Run AnemoDB from anywhere!</span><br>
+                    <span class="prompt">$</span>anemo_db
+                </div>
+            </div>
+        </section>
+
+        <!-- Key Metrics -->
+        <div class="benchmark-grid" id="benchmarks">
+            <div class="stat-card">
+                <div class="stat-value">&lt; 0.5 ms</div>
+                <div class="stat-label">Cache Hit Latency</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">30x - 50x</div>
+                <div class="stat-label">Throughput Multiplier</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">1 Fetch</div>
+                <div class="stat-label">Single-Flight DB Misses</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">0 Copies</div>
+                <div class="stat-label">C++17 Move Semantics Queue</div>
+            </div>
+        </div>
+
+        <!-- System Architecture -->
+        <section class="architecture-box" id="features">
+            <div class="section-title">
+                <h2>System Architecture & Design</h2>
+                <p>Engineered from scratch using modern C++17, POSIX socket primitives, and lock-free / condition-variable synchronization.</p>
+            </div>
+            <img src="assets/Anemo-system-design-light.png" alt="Anemo DB Architecture" class="arch-img">
+        </section>
+
+        <!-- Features Grid -->
+        <div class="section-title">
+            <h2>Core Engineering Highlights</h2>
+            <p>Built for concurrent scalability, memory bounded safety, and real-time observability.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon icon-cyan">⚡</div>
+                <h3>Request Coalescing</h3>
+                <p>Solves the Thundering Herd Problem. If 500 threads miss the cache on the same query simultaneously, exactly <strong>1 leader thread</strong> queries PostgreSQL while 499 followers wait and reuse the result.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon icon-green">🎯</div>
+                <h3>Fast-Path O(1) LRU Eviction</h3>
+                <p>Combines an unordered hash map directory with a doubly-linked list. Under memory pressure, tail eviction executes in O(1) while protecting in-progress reservations.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon icon-purple">🛡️</div>
+                <h3>Non-Blocking Listener</h3>
+                <p>The accept loop immediately dispatches client descriptors to the worker pool, preventing Slowloris attacks and socket starvation.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon icon-blue">🔒</div>
+                <h3>PostgreSQL Read-Only Scope</h3>
+                <p>Two layers of defense-in-depth: query sanitization at the edge and <code>pqxx::read_transaction</code> at the engine level to prevent destructive SQL mutations.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon icon-cyan">📊</div>
+                <h3>In-Band Telemetry & Dashboard</h3>
+                <p>Send <code>STATS</code> for ANSI terminal reports or <code>STATS_JSON</code> for real-time monitoring via the bundled Flask + Chart.js web dashboard.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon icon-green">🔌</div>
+                <h3>Resilient Connection Pool</h3>
+                <p>Fixed-size thread pool of persistent PostgreSQL connections with fail-fast validation, idle reconnects, and acquisition timeouts.</p>
+            </div>
+        </div>
+
+        <!-- Protocol Specification -->
+        <section class="protocol-box" id="protocol">
+            <div class="section-title" style="margin-bottom: 24px; text-align: left;">
+                <h2>Framed Protocol Specification</h2>
+                <p>Clients communicate with AnemoDB over TCP using a simple, delimiter-framed protocol terminated by <span class="code-inline">&lt;EOQ&gt;</span>.</p>
+            </div>
+            
+            <p style="margin-bottom: 12px;"><strong>Client Request:</strong></p>
+            <div style="background: var(--code-bg); padding: 14px 20px; border-radius: 8px; font-family: 'Fira Code', monospace; margin-bottom: 20px; border: 1px solid var(--border);">
+                SELECT student_id, name FROM students WHERE student_id = 42;<br>
+                <span style="color: var(--accent-cyan);">&lt;EOQ&gt;</span>
+            </div>
+
+            <p style="margin-bottom: 12px;"><strong>Server Response:</strong></p>
+            <div style="background: var(--code-bg); padding: 14px 20px; border-radius: 8px; font-family: 'Fira Code', monospace; border: 1px solid var(--border);">
+                [CACHE HIT] 42 | Alice Johnson | Computer Science<br>
+                <span style="color: var(--accent-cyan);">&lt;EOQ&gt;</span>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <p>
+                AnemoDB is open-source software licensed under the <a href="https://github.com/NirjharDebnath/StormyDB/blob/main/LICENSE">MIT License</a>.<br>
+                Crafted with modern C++17 • As Fast As The Winds 🍃
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

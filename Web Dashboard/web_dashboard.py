@@ -11,7 +11,7 @@ ANEMO_PORT = 8080
 def fetch_stats_from_cpp():
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(200)
+            s.settimeout(2.0)
             s.connect((ANEMO_HOST, ANEMO_PORT))
             s.sendall(b"STATS_JSON\n<EOQ>\n")
 

@@ -5,36 +5,75 @@
 #include <condition_variable>
 #include <memory>
 #include <string>
+#include <chrono>
+#include <stdexcept>
 #include <pqxx/pqxx>
 
 class ConnectionPool {
 private:
     std::mutex pool_mtx;
     std::condition_variable pool_cv;
-    std::queue<std::unique_ptr<pqxx::connection>> connections; // stores tcp connections of the database (no user input allowed) = n_threads. helps in fast aquiring tcp connection by leader threads for fast db query. also lets stats ignore the tcp connection time completely.
-    std::string connection_string;
-    size_t pool_size; // max ocnnections
+    std::queue<std::unique_ptr<pqxx::connection>> connections;
+    size_t pool_size;              // Declared first
+    std::string connection_string; // Declared second (matches init order)
 
 public:
     ConnectionPool(size_t size, const std::string& conn_str) 
         : pool_size(size), connection_string(conn_str) {
         
+        size_t successful_connections = 0;
+
         for (size_t i = 0; i < pool_size; ++i) {
             try {
-                connections.push(std::make_unique<pqxx::connection>(connection_string));
+                auto conn = std::make_unique<pqxx::connection>(connection_string);
+                if (conn->is_open()) {
+                    connections.push(std::move(conn));
+                    successful_connections++;
+                }
             } catch (const std::exception& e) {
-                std::cerr << "Failed to initialize DB connection: " << e.what() << "\n";
+                std::cerr << "[ConnectionPool] Connection " << (i + 1) 
+                          << " failed: " << e.what() << "\n";
             }
         }
+
+        // Fail-Fast: If not a single connection could be made, fail server startup
+        if (successful_connections == 0) {
+            throw std::runtime_error("Failed to connect to PostgreSQL database. Check credentials and service status.");
+        }
+
+        std::cout << "[ConnectionPool] Initialized " << successful_connections 
+                  << "/" << pool_size << " database connections.\n";
     }
 
-    // Blocks until a connection becomes available
+    // Acquires a connection from the pool with timeout and health check
     std::unique_ptr<pqxx::connection> acquire() {
         std::unique_lock<std::mutex> lock(pool_mtx);
-        pool_cv.wait(lock, [this]() { return !connections.empty(); });
+
+        // Wait up to 5 seconds for an available connection
+        bool acquired = pool_cv.wait_for(lock, std::chrono::seconds(5), [this]() {
+            return !connections.empty();
+        });
+
+        if (!acquired) {
+            throw std::runtime_error("Database connection pool timeout (all connections busy)");
+        }
 
         auto conn = std::move(connections.front());
         connections.pop();
+
+        // Health Check & Auto-Reconnect:
+        // If connection dropped while idle, re-establish it
+        if (!conn || !conn->is_open()) {
+            try {
+                conn = std::make_unique<pqxx::connection>(connection_string);
+            } catch (const std::exception& e) {
+                // Return a slot back to the pool so capacity doesn't permanently shrink
+                connections.push(nullptr);
+                pool_cv.notify_one();
+                throw std::runtime_error(std::string("Database reconnection failed: ") + e.what());
+            }
+        }
+
         return conn;
     }
 

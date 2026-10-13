@@ -22,21 +22,20 @@
 
 struct Request{
     int client_fd; // client tcp ip or socket descriptor
-    std::string query;
 };
 
 class CacheEngine {
 
 private:
     Cache cache;
+    size_t n_threads;
+    int port;
+    int server_fd = -1;
     ConnectionPool db_pool;
     ThreadSafeQueue<Request> taskQueue;
     std::vector<std::thread> workers;
     std::thread listener_thread;
-    size_t n_threads;
 
-    int port;
-    int server_fd = -1;
     std::atomic<bool> is_running{true};
 
     // telemetrics atomics
@@ -51,14 +50,31 @@ private:
     std::atomic<uint64_t> total_processing_time_us{0}; // stored in microseconds
     std::chrono::time_point<std::chrono::steady_clock> server_start_time;
 
+    // Validates that the query is a read-only statement (SELECT, WITH, EXPLAIN)
+    bool isReadOnlyQuery(const std::string& q) const {
+        size_t idx = 0;
+        // Skip leading whitespace or parentheses
+        while (idx < q.size() && (std::isspace(static_cast<unsigned char>(q[idx])) || q[idx] == '(')) {
+            idx++;
+        }
+        std::string prefix = q.substr(idx, 7);
+        for (auto& c : prefix) {
+            c = std::toupper(static_cast<unsigned char>(c));
+        }
+
+        return (prefix.rfind("SELECT", 0) == 0 ||
+                prefix.rfind("WITH", 0) == 0 ||
+                prefix.rfind("EXPLAIN", 0) == 0);
+    }
+
     std::string queryDatabase(const std::string& query) {
         // 1. Borrow a connection from the pool
         auto conn = db_pool.acquire();
         std::string formatted_result;
 
         try {
-            // 2. Start a read-only transactional scope
-            pqxx::nontransaction tx(*conn);
+            // 2. Enforce a genuine read-only transaction scope in PostgreSQL
+            pqxx::read_transaction tx(*conn);
             
             // 3. Execute the SQL query
             pqxx::result res = tx.exec(query);
@@ -66,11 +82,27 @@ private:
             if (res.empty()) {
                 formatted_result = "No records found.";
             } else {
-                // Format the first row's columns into a pipe-separated string
-                for (auto field : res[0]) {
-                    formatted_result += field.c_str();
-                    formatted_result += " | ";
+                std::ostringstream oss;
+                bool first_row = true;
+
+                // Iterate over all rows in the result set
+                for (const auto& row : res) {
+                    if (!first_row) {
+                        oss << "\n";
+                    }
+                    first_row = false;
+
+                    bool first_col = true;
+                    // Format columns cleanly with pipe separators
+                    for (const auto& field : row) {
+                        if (!first_col) {
+                            oss << " | ";
+                        }
+                        first_col = false;
+                        oss << field.c_str();
+                    }
                 }
+                formatted_result = oss.str();
             }
         } catch (const std::exception &e) {
             db_pool.release(std::move(conn)); // Ensure connection is returned on error
@@ -98,21 +130,35 @@ private:
     }
 
     std::string readQuery(int client_socket) {
+        // Enforce a 5-second socket receive timeout so inactive clients don't stall workers
+        struct timeval timeout{};
+        timeout.tv_sec = 5;
+        timeout.tv_usec = 0;
+        setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+
         std::string buffer;
         char chunk[512];
         const std::string delimiter = "<EOQ>";
+        constexpr size_t MAX_QUERY_SIZE = 65536; // 64 KB maximum payload limit
 
         while (true) {
             ssize_t bytes_read = read(client_socket, chunk, sizeof(chunk));
             if (bytes_read <= 0) {
-                break; // Client closed connection or error
+                break; // Client closed connection, timed out, or read error
             }
 
             buffer.append(chunk, bytes_read);
 
+            // Guard against unbounded memory allocation (OOM protection)
+            if (buffer.size() > MAX_QUERY_SIZE) {
+                std::string err = "[ERROR] QUERY_TOO_LARGE: Exceeds 64 KB limit\n<EOQ>\n";
+                writeAll(client_socket, err);
+                return "";
+            }
+
             size_t delim_pos = buffer.find(delimiter);
             if (delim_pos != std::string::npos) {
-                // Extract the query up to the delimiter
+                // Extract query up to delimiter
                 std::string query = buffer.substr(0, delim_pos);
                 
                 // Clean up leading/trailing whitespace
@@ -122,14 +168,25 @@ private:
             }
         }
 
-        return ""; // Incomplete transmission or client disconnected early
+        return ""; // Incomplete transmission, timeout, or disconnected early
     }
 
     // worker function to be executed by each threads
     void workerLoop(size_t worker_id) {
+        (void) worker_id;
+
         while(true) {
             auto task = taskQueue.pop();
             if (!task) break; 
+
+            int client_fd = task->client_fd;
+
+            // Read Query on the worker so the listener is not blocked
+            std::string query = readQuery(client_fd);
+            if (query.empty()) {
+                close(client_fd);
+                continue;
+            }
 
             active_workers++;
 
@@ -137,21 +194,25 @@ private:
             auto task_start_time = std::chrono::steady_clock::now();
             std::string final_response;
 
-            if (task->query == "STATS") {
+            if (query == "STATS") {
                 // Return the generated report over TCP
                 final_response = generateStatsReport();
             }
-            else if (task->query == "STATS_JSON") {
+            else if (query == "STATS_JSON") {
                 // Raw JSON for web dashboards / external monitoring
                 final_response = generateStatsJson();
             }
+            else if (!isReadOnlyQuery(query)) {
+                // Fast rejection for non-read queries
+                final_response = "[ERROR] READ_ONLY_VIOLATION: Anemo DB is a read-only cache (only SELECT queries permitted)";
+            }
             else {
                 total_requests++; // Atomic increment
-                auto [cacheline, is_leader] = cache.lookupOrReserve(task->query);
+                auto [cacheline, is_leader] = cache.lookupOrReserve(query);
 
                 if(is_leader) {
                     try {
-                        std::string dbResult = queryDatabase(task->query);
+                        std::string dbResult = queryDatabase(query);
                         cache.completeReservation(cacheline, dbResult);
                         cache_misses++; // Atomic increment
                         final_response = "[CACHE MISS] " + dbResult;
@@ -180,7 +241,7 @@ private:
             // 2. Stop latency timer right before network transmission
             auto task_end_time = std::chrono::steady_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::microseconds>(task_end_time - task_start_time).count();
-            if (task->query != "STATS" && task->query != "STATS_JSON") {
+            if (query != "STATS" && query != "STATS_JSON") {
                 total_processing_time_us += duration; // Atomic add
             }
 
@@ -232,7 +293,7 @@ private:
             sockaddr_in client_addr{};
             socklen_t addrlen = sizeof(client_addr);
 
-            // Blocking wait for a new client
+            //  Wait for a new client
             int client_socket = accept(server_fd, (struct sockaddr *)&client_addr, &addrlen);
 
             if (client_socket < 0)
@@ -242,29 +303,21 @@ private:
                 perror("Accept failed");
                 continue;
             }
-
-            char buffer[1024] = {0};
-            std::string query = readQuery(client_socket);
-
-            if(!query.empty()) {
-                // Attempt to push the task to the queue
-                if (!taskQueue.push({client_socket, query})) {
-                    // Fast Rejection: The queue is full. 
-                    // Send an immediate error back to the client and close the socket.
-                    std::string err_msg = "[ERROR] SERVER_BUSY_QUEUE_FULL\n<EOQ>\n";
-                    writeAll(client_socket, err_msg);
-                    close(client_socket);
-                }
-            }
-            else {
+            
+            // Attempt to push the client_fd to the queue
+            if (!taskQueue.push({client_socket})) {
+                // Fast Rejection: The queue is full. 
+                // Send an immediate error back to the client and close the socket.
+                std::string err_msg = "[ERROR] SERVER_BUSY_QUEUE_FULL\n<EOQ>\n";
+                writeAll(client_socket, err_msg);
                 close(client_socket);
             }
         }
     }
 
 public:
-    CacheEngine(size_t total_cachelines, size_t n_threads, int port, const std::string& db_conn_str, size_t ttl_seconds) 
-        : cache(total_cachelines, ttl_seconds), n_threads(n_threads), port(port), db_pool(n_threads, db_conn_str) {    
+        CacheEngine(size_t total_cachelines, size_t n_threads, int port, const std::string& db_conn_str, size_t ttl_seconds) 
+        : cache(total_cachelines, ttl_seconds), n_threads(n_threads), port(port), db_pool(n_threads, db_conn_str) {
         server_start_time = std::chrono::steady_clock::now(); 
         
         for(size_t i=0; i < n_threads; ++i){

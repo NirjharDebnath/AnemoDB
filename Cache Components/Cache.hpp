@@ -43,21 +43,40 @@ private:
         cacheLines.splice(cacheLines.begin(), cacheLines, p);
     }
 
-    // function to evict only READY nodes if present in cacheLines from the tail
+    // Function to evict only READY nodes from the tail
+    // Normalizes cache size back to total_cachelines while preserving IN_PROGRESS nodes
     bool evictReadyNode() {
-        if (cacheLines.size() <total_cachelines) return true;
+        while (cacheLines.size() >= total_cachelines) {
+            // Fast Path: Check if the tail node is READY for O(1) eviction
+            if (cacheLines.back()->state == NodeState::READY) {
+                auto tail = cacheLines.back();
+                payload_bytes -= (tail->key.size() + tail->value.size());
+                cacheDirectory.erase(tail->key);
+                cacheLines.pop_back();
+                continue; // Loop again if cache size is still >= total_cachelines
+            }
 
-        auto it = cacheLines.end();
-        while (it != cacheLines.begin()) {
-            --it; 
-            if ((*it)->state == NodeState::READY) {
-                payload_bytes -= ((*it)->key.size() + (*it)->value.size());
-                cacheDirectory.erase((*it)->key);
-                cacheLines.erase(it);
-                return true;
+            // Slow Path: Tail is currently IN_PROGRESS, scan backward for the nearest READY node
+            auto it = cacheLines.end();
+            bool evicted = false;
+            while (it != cacheLines.begin()) {
+                --it;
+                if ((*it)->state == NodeState::READY) {
+                    payload_bytes -= ((*it)->key.size() + (*it)->value.size());
+                    cacheDirectory.erase((*it)->key);
+                    cacheLines.erase(it);
+                    evicted = true;
+                    break;
+                }
+            }
+
+            // If no READY nodes exist, all nodes are currently in flight
+            // (Strictly bounded by the number of worker threads)
+            if (!evicted) {
+                return false;
             }
         }
-        return false; // entire cache is in progress
+        return true;
     }
 public:
     explicit Cache(size_t total_cachelines, size_t ttl=60) : total_cachelines(total_cachelines == 0 ? 1 : total_cachelines), ttl_seconds(ttl) {}

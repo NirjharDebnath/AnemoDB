@@ -197,4 +197,4 @@ async function updateMetrics() {
     }
 }
 updateMetrics();
-setInterval(updateMetrics, 16.66);
+setInterval(updateMetrics, 1000);

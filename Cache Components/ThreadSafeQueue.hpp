@@ -25,7 +25,7 @@ public:
             std::lock_guard<std::mutex> lock(mtx); // lock the shared mutex lock, automatic locking (no mtx.lock reqd in modern C++)
             
             if (queue.size() >= max_capacity || is_stopped) return false;
-            queue.push(task);
+            queue.push(std::move(task)); // Zero-copy move
         } // lock goes out of scope for the declared scope
 
         cv.notify_one(); // wake one worker thread to take the task and pop it out of the shared queue
@@ -46,7 +46,7 @@ public:
         if(queue.empty() && is_stopped) return std::nullopt;
 
         // wake up cause there is a task in the shared queue
-        T task = queue.front();
+        T task = std::move(queue.front());
         queue.pop();
 
         return task;

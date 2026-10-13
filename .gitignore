@@ -1,2 +1,7 @@
-.vscode
+.vscode/
 idea.xopp
+build/
+anemo_db
+Cache Components/anemo_db
+__pycache__/
+*.pyc

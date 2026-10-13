@@ -5,9 +5,18 @@
 #include <limits>
 #include <chrono>
 #include <thread>
+#include <atomic>
+#include <csignal>
 
 void clearScreen() {
-    std::system("clear");
+    std::cout << "\033[2J\033[1;1H";
+}
+
+static std::atomic<bool> g_shutdown_requested{false};
+
+void handleSignal(int signum) {
+    (void)signum;
+    g_shutdown_requested = true;
 }
 
 int main() {
@@ -197,13 +206,11 @@ int main() {
 
     try {
 
-        CacheEngine server(
-            cacheCapacity,
-            workerThreads,
-            serverPort,
-            conn_str,
-            ttlSeconds
-        );
+        CacheEngine server (cacheCapacity, workerThreads, serverPort, conn_str, ttlSeconds);
+
+        // Register signal handlers for graceful shutdown on Ctrl+C (SIGINT) or SIGTERM
+        std::signal(SIGINT, handleSignal);
+        std::signal(SIGTERM, handleSignal);
 
         std::this_thread::sleep_for(
             std::chrono::milliseconds(400)
@@ -219,6 +226,9 @@ int main() {
         std::cout << "  help       - Show available commands\n";
         std::cout << "  stop       - Shutdown server\n";
 
+        // Register signal handlers for graceful shutdown on Ctrl+C or kill
+        std::signal(SIGINT, handleSignal);
+        std::signal(SIGTERM, handleSignal);
 
         // ─────────────────────────────────────────
         // Interactive terminal
@@ -226,24 +236,29 @@ int main() {
 
         std::string command;
 
-        while (true) {
+        while (!g_shutdown_requested) {
 
             std::cout << "\n";
             std::cout << DARK_BLUE
                       << "admin@cache_server> "
-                      << RESET;
+                      << RESET
+                      << std::flush;
 
             if (!std::getline(std::cin, command)) {
+                if (g_shutdown_requested) {
+                    std::cout << YELLOW << "\nSignal received. Initiating graceful shutdown...\n" << RESET;
+                }
                 break;
             }
 
+            if (g_shutdown_requested) {
+                break;
+            }
 
             // Remove accidental leading/trailing spaces
             if (!command.empty()) {
-
                 const auto first = command.find_first_not_of(" \t");
                 const auto last  = command.find_last_not_of(" \t");
-
                 if (first != std::string::npos) {
                     command = command.substr(
                         first,
@@ -252,35 +267,25 @@ int main() {
                 }
             }
 
-
             // ─────────────────────────────────────
             // Commands
             // ─────────────────────────────────────
 
-            if (command == "stop" || command == "exit" ||
-                command == "quit") {
-
+            if (command == "stop" || command == "exit" || command == "quit") {
                 std::cout << YELLOW
                           << "Shutting down server...\n"
                           << RESET;
-
                 break;
             }
-
             else if (command == "showstats") {
-
                 std::cout << "\n";
                 std::cout << server.generateStatsReport();
                 std::cout << "\n";
             }
-
             else if (command == "clear") {
-
                 clearScreen();
             }
-
             else if (command == "help") {
-
                 std::cout << "\n";
                 std::cout << "Available commands:\n";
                 std::cout << "  showstats  - View cache statistics\n";
@@ -288,9 +293,7 @@ int main() {
                 std::cout << "  help       - Show this help message\n";
                 std::cout << "  stop       - Shutdown server\n";
             }
-
             else if (!command.empty()) {
-
                 std::cout << RED
                           << "Unknown command: "
                           << command
@@ -299,27 +302,15 @@ int main() {
             }
         }
 
-    }
-    catch (const std::exception& e) {
-
-        std::cout << RED
-                  << "\nServer failed to start:\n"
-                  << e.what()
-                  << "\n"
-                  << RESET;
-
+    } catch (const std::exception& e) {
+        std::cout << RED << "\nServer failed to start:\n" << e.what() << "\n" << RESET;
         return 1;
     }
-
 
     // ─────────────────────────────────────────────
     // Shutdown
     // ─────────────────────────────────────────────
 
-    std::cout << "\n"
-              << GREEN
-              << "Cache server stopped.\n"
-              << RESET;
-
+    std::cout << "\n" << GREEN << "Cache server stopped.\n" << RESET;
     return 0;
 }
