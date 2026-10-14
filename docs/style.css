@@ -77,7 +77,7 @@ body {
             rgba(7, 9, 14, 0.74) 0%,
             rgba(7, 9, 14, 0.8) 45%,
             rgba(7, 9, 14, 0.88) 100%),
-        url('assets/bg-tree.webp') center / cover no-repeat;
+        url('assets/mondstadt.jpg') center / cover no-repeat;
     animation: fade-in 1.2s ease backwards;
 }
 
