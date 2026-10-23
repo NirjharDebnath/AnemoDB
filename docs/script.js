@@ -95,15 +95,13 @@ function switchBenchTab(index) {
 
 // ───────── 4. CLIENT INTEGRATION CODE TABS ─────────
 function switchCodeTab(lang) {
-    const tabs = ['python', 'node', 'go', 'bash'];
+    const tabs = ['python', 'node', 'go', 'bash', 'cpp', 'java', 'rust'];
     document.querySelectorAll('.code-tab-btn').forEach((btn, i) => {
-        btn.classList.toggle('active', tabs[i] === lang);
+        const onclickAttr = btn.getAttribute('onclick') || '';
+        btn.classList.toggle('active', onclickAttr.includes(`'${lang}'`) || tabs[i] === lang);
     });
-    tabs.forEach(item => {
-        const pane = document.getElementById(`codePane-${item}`);
-        if (pane) {
-            pane.classList.toggle('active', item === lang);
-        }
+    document.querySelectorAll('.code-pane').forEach(pane => {
+        pane.classList.toggle('active', pane.id === `codePane-${lang}`);
     });
 }
 
@@ -424,6 +422,21 @@ const highlightLangs = {
         keywords: [],
         builtins: ['echo'],
         commands: ['nc']
+    },
+    cpp: {
+        pattern: /(\/\/.*)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|(\b\d+(?:\.\d+)?\b)|(#\w+|[A-Za-z_]\w*)/g,
+        keywords: ['#include', 'const', 'int', 'char', 'void', 'return', 'if', 'else', 'while', 'for', 'struct', 'sizeof', 'new', 'delete', 'true', 'false', 'nullptr'],
+        builtins: ['std', 'string', 'cout', 'endl', 'size_t', 'socket', 'sockaddr_in', 'AF_INET', 'SOCK_STREAM', 'htons', 'inet_pton', 'connect', 'send', 'read', 'close']
+    },
+    java: {
+        pattern: /(\/\/.*)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|(\b\d+(?:\.\d+)?\b)|([A-Za-z_]\w*)/g,
+        keywords: ['import', 'public', 'class', 'static', 'void', 'throws', 'try', 'catch', 'new', 'return', 'if', 'while', 'for', 'byte', 'int', 'true', 'false', 'null'],
+        builtins: ['String', 'Socket', 'OutputStream', 'InputStream', 'StandardCharsets', 'StringBuilder', 'Exception', 'System']
+    },
+    rust: {
+        pattern: /(\/\/.*)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|(\b\d+(?:\.\d+)?\b)|([A-Za-z_]\w*)/g,
+        keywords: ['use', 'fn', 'let', 'mut', 'loop', 'match', 'if', 'else', 'break', 'return', 'pub', 'struct', 'impl'],
+        builtins: ['std', 'io', 'net', 'TcpStream', 'Result', 'String', 'Ok', 'Err', 'println', 'eprintln', 'format']
     }
 };
 
